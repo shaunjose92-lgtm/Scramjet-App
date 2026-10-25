@@ -1,65 +1,326 @@
 <!doctype html>
-<html>
+<html lang="en">
 	<head>
 		<meta charset="utf-8" />
 		<meta
 			name="viewport"
 			content="width=device-width, initial-scale=1.0, shrink-to-fit=no"
 		/>
-		<title>Scramjet</title>
+		<meta name="theme-color" content="#2a2620" />
+		<title>Cipher Browser</title>
 
-		<link rel="shortcut icon" content="favicon.webp" />
-	
+		<link
+			rel="icon"
+			href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22><rect width=%2224%22 height=%2224%22 rx=%227%22 fill=%22%237a8a62%22/></svg>"
+		/>
+
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link
+			rel="stylesheet"
+			href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Source+Serif+4:wght@500;600&display=swap"
+		/>
+
 		<script src="/scram/scramjet.all.js"></script>
 		<script src="/baremux/index.js"></script>
-		
+
 		<link rel="stylesheet" href="index.css" />
 		<script src="register-sw.js" defer></script>
 		<script src="search.js" defer></script>
 		<script src="index.js" defer></script>
+
+		<style>
+			:root {
+				--bg: #2a2620;
+				--bg-2: #1f1c17;
+				--line: #3a342c;
+				--text: #ede5d4;
+				--text-dim: #a39a8a;
+				--text-faint: #7a7264;
+				--sage: #97a67d;
+				--sage-deep: #b3c194;
+				--sage-soft: rgba(151, 166, 125, 0.16);
+				--glow: rgba(151, 166, 125, 0.3);
+				--clay: #d8a3a3;
+				--glass: rgba(237, 229, 212, 0.05);
+				--glass-hi: rgba(255, 253, 247, 0.07);
+				--sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+				--display: "Source Serif 4", "Iowan Old Style", "Palatino Linotype",
+					Georgia, serif;
+				--ease: cubic-bezier(0.22, 0.9, 0.32, 1);
+			}
+			@media (prefers-color-scheme: light) {
+				:root {
+					--bg: #f4f1e9;
+					--bg-2: #ede5d4;
+					--line: #e3dcc9;
+					--text: #2b2620;
+					--text-dim: #6a6358;
+					--text-faint: #9a948a;
+					--sage: #7a8a62;
+					--sage-deep: #566244;
+					--sage-soft: rgba(122, 138, 98, 0.16);
+					--glow: rgba(122, 138, 98, 0.32);
+					--clay: #c98a8a;
+					--glass: rgba(43, 38, 32, 0.04);
+					--glass-hi: rgba(255, 253, 247, 0.6);
+				}
+			}
+
+			html,
+			body {
+				margin: 0;
+				min-height: 100%;
+			}
+			body {
+				min-height: 100vh;
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				justify-content: center;
+				padding: 32px 20px 96px;
+				box-sizing: border-box;
+				background:
+					radial-gradient(
+						ellipse 60% 50% at 18% 12%,
+						var(--sage-soft),
+						transparent 70%
+					),
+					radial-gradient(
+						ellipse 50% 45% at 88% 90%,
+						rgba(216, 163, 163, 0.12),
+						transparent 70%
+					),
+					linear-gradient(180deg, var(--bg), var(--bg-2));
+				background-attachment: fixed;
+				color: var(--text);
+				font-family: var(--sans);
+				-webkit-font-smoothing: antialiased;
+			}
+
+			.cp-wrap {
+				width: 100%;
+				max-width: 620px;
+				text-align: center;
+				animation: cpIn 0.7s var(--ease) both;
+			}
+			@keyframes cpIn {
+				from {
+					opacity: 0;
+					transform: translateY(14px);
+				}
+				to {
+					opacity: 1;
+					transform: none;
+				}
+			}
+
+			.cp-brand {
+				display: inline-flex;
+				align-items: center;
+				gap: 14px;
+				margin-bottom: 14px;
+			}
+			.cp-mark {
+				width: 52px;
+				height: 52px;
+				border-radius: 15px;
+				background: var(--sage);
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				box-shadow: 0 14px 34px -14px var(--glow);
+				transition: transform 0.4s var(--ease);
+			}
+			.cp-brand:hover .cp-mark {
+				transform: rotate(-6deg) scale(1.05);
+			}
+			.cp-mark svg {
+				width: 60%;
+				height: 60%;
+				display: block;
+			}
+			.cp-brand h1 {
+				margin: 0;
+				font-family: var(--display);
+				font-weight: 600;
+				font-size: 40px;
+				letter-spacing: -0.02em;
+				color: var(--text);
+			}
+
+			.cp-tag {
+				margin: 0 auto 30px;
+				max-width: 460px;
+				font-size: 15px;
+				line-height: 1.6;
+				color: var(--text-dim);
+			}
+
+			#sj-form {
+				display: block;
+				margin: 0;
+			}
+			#sj-address {
+				box-sizing: border-box;
+				width: 100%;
+				padding: 17px 22px;
+				font: 500 16px var(--sans);
+				color: var(--text);
+				background: var(--glass);
+				border: 1px solid var(--line);
+				border-radius: 999px;
+				outline: none;
+				-webkit-backdrop-filter: blur(14px) saturate(140%);
+				backdrop-filter: blur(14px) saturate(140%);
+				box-shadow:
+					inset 0 1px 0 var(--glass-hi),
+					0 18px 40px -26px rgba(0, 0, 0, 0.55);
+				transition:
+					border-color 0.3s var(--ease),
+					box-shadow 0.3s var(--ease),
+					transform 0.3s var(--ease);
+			}
+			#sj-address::placeholder {
+				color: var(--text-faint);
+			}
+			#sj-address:focus {
+				border-color: var(--sage);
+				transform: translateY(-1px);
+				box-shadow:
+					inset 0 1px 0 var(--glass-hi),
+					0 0 0 4px var(--sage-soft),
+					0 22px 44px -24px var(--glow);
+			}
+
+			.cp-hint {
+				margin-top: 14px;
+				font-size: 12.5px;
+				color: var(--text-faint);
+			}
+
+			#sj-error {
+				margin: 18px 0 0;
+				font-size: 14px;
+				color: #e08b84;
+			}
+			#sj-error-code {
+				margin: 8px auto 0;
+				max-width: 100%;
+				text-align: left;
+				white-space: pre-wrap;
+				word-break: break-word;
+				font: 12px ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+				color: var(--text-dim);
+			}
+			#sj-error-code:empty {
+				display: none;
+			}
+
+			.cp-footer {
+				position: fixed;
+				left: 0;
+				right: 0;
+				bottom: 0;
+				padding: 16px 20px calc(16px + env(safe-area-inset-bottom, 0px));
+				text-align: center;
+				font-size: 12px;
+				line-height: 1.7;
+				color: var(--text-faint);
+			}
+			.cp-footer a {
+				color: var(--text-dim);
+				text-decoration: none;
+				margin: 0 6px;
+			}
+			.cp-footer a:hover {
+				color: var(--sage-deep);
+			}
+
+			#sj-frame {
+				position: fixed;
+				inset: 0;
+				width: 100%;
+				height: 100%;
+				border: 0;
+				background: #fff;
+				z-index: 10;
+			}
+
+			@media (max-width: 520px) {
+				.cp-brand h1 {
+					font-size: 32px;
+				}
+				.cp-mark {
+					width: 44px;
+					height: 44px;
+					border-radius: 13px;
+				}
+			}
+		</style>
 	</head>
 
 	<body>
-		<div title="Scramjet Logo" class="flex-center logo-wrapper header-center">
-			<img class="logo" src="sj.png" alt="Scramjet" />
-			<h1>Scramjet | MW</h1>
-		</div>
-		<div class="flex-center desc left-margin">
-			<p>
-				Scramjet is an experimental interception based web proxy designed to
-				evade internet censorship, bypass arbitrary web browser restrictions and
-				innovate web proxy technologies.
-			</p>
-		</div>
+		<div class="cp-wrap">
+			<div class="cp-brand" title="Cipher">
+				<div class="cp-mark">
+					<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+						<path
+							d="M16.5 7.6a6 6 0 1 0 0 8.8"
+							stroke="#fff"
+							stroke-width="2.4"
+							stroke-linecap="round"
+						/>
+					</svg>
+				</div>
+				<h1>Cipher Browser</h1>
+			</div>
 
-		<form id="sj-form" class="flex-center">
-			<input
-				id="sj-search-engine"
-				value="https://www.google.com/search?q=%s"
-				type="hidden"
-			/>
-			<input id="sj-address" type="text" placeholder="Search the web freely" />
-		</form>
-		<div class="desc left-margin">
+			<p class="cp-tag">
+				Browse freely, right from Cipher. Type a search or a web address below
+				to get started.
+			</p>
+
+			<form id="sj-form">
+				<input
+					id="sj-search-engine"
+					value="https://www.google.com/search?q=%s"
+					type="hidden"
+				/>
+				<input
+					id="sj-address"
+					type="text"
+					placeholder="Search the web or enter an address"
+					autocomplete="off"
+					autocapitalize="off"
+					spellcheck="false"
+				/>
+			</form>
+
+			<div class="cp-hint">
+				Tip: don't sign in to accounts you can't afford to lose.
+			</div>
+
 			<p id="sj-error"></p>
 			<pre id="sj-error-code"></pre>
 		</div>
-		<footer>
+
+		<footer class="cp-footer">
 			<div>
+				Cipher &copy; 2026 &middot; Powered by
+				<a
+					title="Scramjet, the open-source proxy engine"
+					href="https://github.com/MercuryWorkshop/scramjet"
+					>Scramjet</a
+				>
+				by
 				<a
 					title="The Mercury Workshop GitHub organization"
 					href="https://github.com/MercuryWorkshop"
 					>Mercury Workshop</a
 				>
-				<a
-					title="The example demo app for Scramjet"
-					href="https://github.com/MercuryWorkshop/Scramjet-Demo"
-					>GitHub</a
-				>
+				&middot;
 				<a title="License information" href="credits.html">Credits</a>
-			</div>
-			<div>
-				<span>Scramjet &copy; MW 2025</span>
 			</div>
 		</footer>
 	</body>
