@@ -323,5 +323,25 @@
 				<a title="License information" href="credits.html">Credits</a>
 			</div>
 		</footer>
+		<script>
+			/* Cipher: let Cipher's Web browser panel open a site directly, e.g. /?go=https://www.instagram.com/ */
+			window.addEventListener("load", function () {
+				var go = new URLSearchParams(location.search).get("go");
+				if (!go) return;
+				var u;
+				try {
+					u = new URL(go);
+				} catch (e) {
+					return;
+				}
+				if (u.protocol !== "https:" && u.protocol !== "http:") return;
+				var input = document.getElementById("sj-address");
+				var form = document.getElementById("sj-form");
+				if (!input || !form) return;
+				input.value = u.href;
+				if (form.requestSubmit) form.requestSubmit();
+				else form.dispatchEvent(new Event("submit", { cancelable: true, bubbles: true }));
+			});
+		</script>
 	</body>
 </html>
