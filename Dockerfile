@@ -1,20 +1,17 @@
-FROM node:18-alpine
+# Sydney-hostable Scramjet server (Fly.io or another Australian host)
+# Node 22 is required by the Fastify 5 dependency; the original Node 18 image was outdated.
+FROM node:22-bookworm-slim
 
 ENV NODE_ENV=production
-ARG NPM_BUILD="npm install --omit=dev"
-EXPOSE 8080/tcp
-
-LABEL maintainer="Mercury Workshop"
-LABEL summary="Scramjet Demo Image"
-LABEL description="Example application of Scramjet"
-
 WORKDIR /app
 
-COPY ["package.json", "package-lock.json", "./"]
-RUN apk add --upgrade --no-cache python3 make g++
-RUN $NPM_BUILD
+# A pnpm lockfile ships with this project, not a package-lock.json.
+RUN corepack enable
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile --prod
 
-COPY . .
+COPY public ./public
+COPY src ./src
 
-ENTRYPOINT [ "node" ]
-CMD ["src/index.js"]
+EXPOSE 8080
+CMD ["node", "src/index.js"]
