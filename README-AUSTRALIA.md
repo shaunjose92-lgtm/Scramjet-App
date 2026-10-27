@@ -61,12 +61,13 @@ if you prefer idle suspension and are willing to accept cold starts.
 These are real code fixes, not just a hosting-region change:
 
 - **Wisp / WebSocket:** browser checks that `/wisp/` actually accepts WebSocket connections; the server recognises the route by URL path and logs upgrade failures.
-- **DNS:** replaced the filtering-specific `1.1.1.3,1.0.0.3` with the standard `1.1.1.1,1.0.0.1` resolver defaults. Override with `SCRAMJET_DNS_SERVERS` if needed.
+- **DNS:** replaced the filtering-specific resolvers with the host system DNS and IPv4-first resolution. Set `SCRAMJET_DNS_SERVERS` only if you need custom resolver IPs; the code now activates the DNS mode that actually uses them.
 - **Proxy transport:** always refreshes BareMux's libcurl/Wisp URL when the browser starts. This prevents reusing a stale transport from before migration.
 - **Service worker:** waits for activation before launching a site, activates the updated worker on deployment, and reports document HTTP 5xx and network failures separately.
 - **HTTP 500 diagnostics:** server errors receive a request ID in the error response and are logged; Wisp error logging is no longer disabled. Failed site requests produce a warning without closing an otherwise working page.
 - **Cipher connectivity:** the original Cipher host is allowed to inspect the real HTTP status of `GET /` rather than receiving an opaque response with hidden status.
 - **Hosting readiness:** `/health/ready` returns 503 if the essential browser files are missing.
+- **Host diagnostics:** `/diagnostics.html` checks `/health/network` to distinguish outbound network errors, destination HTTP 500 responses, and successful basic reachability.
 
 The app itself is **not yet deployed or end-to-end tested against Whatnot, Instagram or eBay**. A website can return its own 500 or bot-check failure even when the proxy is healthy.
 
