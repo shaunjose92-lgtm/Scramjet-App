@@ -12,7 +12,6 @@ RUN pnpm install --frozen-lockfile --prod
 
 COPY public ./public
 COPY src ./src
-COPY scripts ./scripts
 
 EXPOSE 8080
 CMD ["node", "src/index.js"]
