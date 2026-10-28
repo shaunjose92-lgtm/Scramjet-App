@@ -9,10 +9,12 @@ import { server as wisp, logging } from "@mercuryworkshop/wisp-js/server";
 import Fastify from "fastify";
 import fastifyStatic from "@fastify/static";
 
-import { scramjetPath } from "@mercuryworkshop/scramjet/path";
+import { prepareScramjet } from "./scramjet-compat.js";
+import { scramjetPath as originalScramjetPath } from "@mercuryworkshop/scramjet/path";
 import { libcurlPath } from "@mercuryworkshop/libcurl-transport";
 import { baremuxPath } from "@mercuryworkshop/bare-mux/node";
 
+const scramjetPath = prepareScramjet(originalScramjetPath);
 const publicPath = fileURLToPath(new URL("../public/", import.meta.url));
 
 // Wisp Configuration: Refer to the documentation at https://www.npmjs.com/package/@mercuryworkshop/wisp-js
@@ -24,6 +26,8 @@ Object.assign(wisp.options, {
 	hostname_blacklist: [/example\.com/],
 	dns_method: "lookup",
     dns_result_order: "ipv4first",
+    // wisp-js 0.4.1 measures this option in milliseconds.
+    dns_ttl: 30000,
 });
 
 const fastify = Fastify({

@@ -1,60 +1,74 @@
-# Cipher browser repair — install this update
+# Cipher browser repair
 
-This update keeps your existing Cipher browser, branding and Render free plan.
-Local validation is described below. Check Render for the live deployment status.
+This update fixes confirmed page-loading and login-session defects in the
+existing Cipher browser. It keeps the current branding, URL and Render free plan.
+The code is ready to deploy; it has not been published to the live service.
 
-## Update GitHub (no terminal needed)
+## Actual fixes
+- Preserve percent-encoded session tokens instead of silently changing them.
+- Restore saved cookies correctly when the service worker restarts.
+- Persist server-set cookies, including HttpOnly sessions, before redirects.
+- Synchronize actual response cookies to pages instead of array-index strings.
+- Apply Max-Age expiry and logout deletion, host-only cookies, and domain/path boundaries.
+- Stop requests hanging indefinitely when a closed page cannot acknowledge cookies.
+- Add the isolation headers required to display proxied pages in Chrome.
+- Make concurrent requests wait for engine initialization to finish.
+- Wait for worker activation and page control before the first navigation.
+- Reconfigure the Wisp transport each startup so stale settings are replaced.
+- Accept Wisp URLs containing query strings and handle failed upgrades.
+- Prefer IPv4 through system DNS and correct the DNS cache duration from 120 milliseconds to 30 seconds.
+- Verify the pinned engine archive and check required assets before declaring readiness.
+
+The cookie and initialization patches apply only to the exact Scramjet 1.1.0
+bundle verified by SHA-256. The original dependency is untouched; the server
+builds a patched copy when it starts. A different engine bundle fails with a
+clear startup error instead of receiving incompatible edits. Review these
+patches before upgrading Scramjet.
+
+## Deploy using GitHub (no terminal needed)
 1. Extract `Cipher-Browser-Repair.zip`.
 2. Open https://github.com/shaunjose92-lgtm/Scramjet-App and select **main**.
 3. Choose **Add file → Upload files**.
-4. Drag the FILES AND FOLDERS INSIDE the extracted folder into GitHub. Include
+4. Drag the files and folders INSIDE the extracted folder into GitHub, including
    `src`, `public`, `scripts`, `tests`, `package.json` and `pnpm-lock.yaml`.
-   Do not upload only the README, the ZIP itself, or an extra enclosing folder.
+   Do not upload the ZIP itself or an extra enclosing folder.
 5. Commit the upload. Render's current configuration auto-deploys `main`.
 6. Wait until Render reports the new deploy is **Live**.
-7. Open https://scramjet-app-bx7d.onrender.com/diagnostics.html and run checks.
-8. Refresh Cipher. Its existing backend URL does not need to change.
+7. Refresh Cipher. Its existing backend URL does not need to change.
 
-## What this repairs
-- Wait for the service worker to activate and control the page before navigation.
-- Refresh the transport's Wisp settings each startup, instead of checking only
-  whether a transport module with the same name already exists.
-- Accept `/wisp/` URLs with query strings and catch upgrade failures.
-- Enable Wisp error logging and add request IDs for backend request failures.
-- Use system DNS with IPv4 preferred; the previous custom DNS addresses were
-  ignored by Wisp's default lookup mode.
-- Add `/health/ready`, `/health/network` and `/diagnostics.html`.
-- Pin the existing Scramjet release archive's SHA-512 integrity in the lockfile.
-- Specify Node 22 or later, matching the application's current dependencies.
+The connected GitHub integration rejected writes with HTTP 403, so these
+changes could not be committed remotely or automatically deployed from this session.
 
-## Understanding the diagnostic
-- **Browser files: ready**: required proxy assets are present.
-- **Connection tunnel: Connected**: the Wisp WebSocket handshake succeeded.
-- **reachable**: a basic server request returned 2xx/3xx, not a verified login.
-- **upstream-5xx**: the destination returned a 5xx response to that probe.
-- **restricted**: the destination returned 403/429; restrictions or rate limits
-  are possible explanations, not confirmed causes.
-- **network-error**: the probe could not complete (including timeout).
+## Validation
+16 Node tests pass, covering the reproduced original cookie defects, token
+preservation, expiry/logout, domain/path isolation, engine initialization,
+closed-client handling, response headers, server readiness, Wisp upgrade,
+worker activation and the existing diagnostic checks. Source lint passes.
 
-Probes use fixed destinations only, have an eight-second timeout, and share
-results for one minute to limit load. They do not use user accounts or cookies.
-No public diagnostic response includes credentials or raw exception messages.
-Wisp error logs can include connection-level failure details and hostnames.
+A real Chromium browser at 390 × 844 passed all four local login scenarios
+through the actual Scramjet → BareMux → libcurl → Wisp → HTTP pipeline:
+1. Form POST login and redirect using a percent-encoded HttpOnly session.
+2. Fetch response cookie synchronization and document.cookie HttpOnly filtering.
+3. Session preservation after stopping and restarting the service worker.
+4. Logout deletion with no page JavaScript exceptions.
 
-## What stays unresolved
-Render Free still sleeps when idle. This patch cannot remove that policy,
-change your Oregon server into an Australian server, or guarantee that social
-media sites will accept its shared datacentre IP. The reported Iran location
-and actual Whatnot login/HTTP 500 failure have not been reproduced.
-The separate EdgeOne-hosted Cipher HTML is not modified by this update.
+The dummy login fixture is included. Run `pnpm test` for the Node tests.
+For the optional full browser test, install Playwright and Chromium in your
+development environment, then run `node tests/browser-login.cjs`.
+`CIPHER_TEST_CHROMIUM` can select an existing Chromium executable.
+Use Node 22 or later. No real accounts or passwords are used by these tests.
 
-## Validation completed
-Seven Node tests pass: readiness/assets and live Wisp upgrade, worker setup,
-network-result classification, cache/concurrency and exception sanitisation.
-A Chromium test at 390 × 844 verified the diagnostic display, actual Wisp
-handshake, service-worker control, no horizontal overflow, and no startup JS
-errors. HTTP 500 display was tested with a simulated network-probe response.
-Server source lint checks pass. Social-account login was not tested.
+## Limits
+These repairs do not bypass CAPTCHAs, change a destination site's decisions
+about Render's IP, remove Render Free's idle sleep, or relocate the server.
+Actual Whatnot/social-account login has not been verified. The reported Iran
+location and destination HTTP 500 failure have not been reproduced.
+The separate EdgeOne-hosted Cipher HTML is unchanged.
 
-`pnpm test` runs the included tests. `pnpm diagnose` probes the three fixed
-sites from the machine where the command runs. Use Node 22+.
+## Existing troubleshooting page
+`/diagnostics.html` checks required files, the Wisp connection and basic access
+to three fixed destinations. A reachable result does not prove login works.
+Probes time out after eight seconds and share results for one minute. They
+never use user accounts or cookies. Public responses omit raw exceptions.
+Wisp error logs can contain connection-level failure details and hostnames.
+`pnpm diagnose` runs those probes from the machine where the command executes.

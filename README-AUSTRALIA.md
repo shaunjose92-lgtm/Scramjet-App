@@ -16,4 +16,4 @@ Cipher's backend URL. `configure_cipher_endpoint.py` is an existing helper for
 changing that URL and updating inline-script CSP hashes; it has not been run
 as part of this repair. Keep your current service until the replacement works.
 
-See START-HERE.md for the implemented diagnostics and exact validation limits.
+See START-HERE.md for the implemented repairs and exact validation limits.
