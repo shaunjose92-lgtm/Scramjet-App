@@ -1,0 +1,900 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta
+			name="viewport"
+			content="width=device-width, initial-scale=1.0, shrink-to-fit=no"
+		/>
+		<meta name="theme-color" content="#2a2620" />
+		<title>Cipher Browser</title>
+
+		<link
+			rel="icon"
+			href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22><rect width=%2224%22 height=%2224%22 rx=%227%22 fill=%22%237a8a62%22/></svg>"
+		/>
+
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link
+			rel="stylesheet"
+			href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Source+Serif+4:wght@500;600&display=swap"
+		/>
+
+		<script>
+			/* Cipher: when Cipher opens a site directly (?go=...), hide the page from the very first paint so no start-up screen flashes. */
+			if (new URLSearchParams(location.search).get("go"))
+				document.documentElement.classList.add("cp-go");
+		</script>
+
+		<script src="/scram/scramjet.all.js"></script>
+		<script src="/baremux/index.js"></script>
+
+		<link rel="stylesheet" href="index.css" />
+		<script src="register-sw.js" defer></script>
+		<script src="search.js" defer></script>
+<!-- Navigation is handled by the Cipher bridge below, replacing index.js. -->
+
+		<style>
+			:root {
+				--bg: #2a2620;
+				--bg-2: #1f1c17;
+				--line: #3a342c;
+				--text: #ede5d4;
+				--text-dim: #a39a8a;
+				--text-faint: #7a7264;
+				--sage: #97a67d;
+				--sage-deep: #b3c194;
+				--sage-soft: rgba(151, 166, 125, 0.16);
+				--glow: rgba(151, 166, 125, 0.3);
+				--glass: rgba(237, 229, 212, 0.05);
+				--glass-2: rgba(237, 229, 212, 0.09);
+				--glass-hi: rgba(255, 253, 247, 0.07);
+				--shadow: rgba(0, 0, 0, 0.5);
+				--sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+				--display: "Source Serif 4", "Iowan Old Style", "Palatino Linotype",
+					Georgia, serif;
+				--ease: cubic-bezier(0.22, 0.9, 0.32, 1);
+			}
+			@media (prefers-color-scheme: light) {
+				:root {
+					--bg: #f4f1e9;
+					--bg-2: #ede5d4;
+					--line: #e3dcc9;
+					--text: #2b2620;
+					--text-dim: #6a6358;
+					--text-faint: #9a948a;
+					--sage: #7a8a62;
+					--sage-deep: #566244;
+					--sage-soft: rgba(122, 138, 98, 0.16);
+					--glow: rgba(122, 138, 98, 0.32);
+					--glass: rgba(43, 38, 32, 0.04);
+					--glass-2: rgba(43, 38, 32, 0.07);
+					--glass-hi: rgba(255, 253, 247, 0.6);
+					--shadow: rgba(60, 50, 30, 0.28);
+				}
+			}
+
+			* {
+				-webkit-tap-highlight-color: transparent;
+			}
+			html,
+			body {
+				margin: 0;
+				min-height: 100%;
+			}
+			body {
+				min-height: 100vh;
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				justify-content: center;
+				padding: 36px 18px 72px;
+				box-sizing: border-box;
+				background:
+					radial-gradient(
+						ellipse 60% 50% at 14% 10%,
+						var(--sage-soft),
+						transparent 70%
+					),
+					radial-gradient(
+						ellipse 50% 45% at 90% 92%,
+						rgba(216, 163, 163, 0.12),
+						transparent 70%
+					),
+					linear-gradient(180deg, var(--bg), var(--bg-2));
+				background-attachment: fixed;
+				color: var(--text);
+				font-family: var(--sans);
+				-webkit-font-smoothing: antialiased;
+			}
+
+			.cp-wrap {
+				width: 100%;
+				max-width: 640px;
+				text-align: center;
+			}
+
+			/* ---- brand ---- */
+			.cp-brand {
+				display: inline-flex;
+				align-items: center;
+				gap: 12px;
+				margin-bottom: 22px;
+			}
+			.cp-mark {
+				width: 40px;
+				height: 40px;
+				border-radius: 12px;
+				background: var(--sage);
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				box-shadow: 0 12px 28px -12px var(--glow);
+				transition: transform 0.4s var(--ease);
+			}
+			.cp-brand:hover .cp-mark {
+				transform: rotate(-6deg) scale(1.06);
+			}
+			.cp-mark svg {
+				width: 60%;
+				height: 60%;
+				display: block;
+			}
+			.cp-brand h1 {
+				margin: 0;
+				font-family: var(--display);
+				font-weight: 600;
+				font-size: 28px;
+				letter-spacing: -0.02em;
+			}
+
+			/* ---- search ---- */
+			#sj-form {
+				position: relative;
+				display: block;
+				margin: 0;
+			}
+			.cp-search-ic {
+				position: absolute;
+				left: 20px;
+				top: 50%;
+				width: 18px;
+				height: 18px;
+				transform: translateY(-50%);
+				stroke: var(--text-faint);
+				fill: none;
+				stroke-width: 2;
+				stroke-linecap: round;
+				pointer-events: none;
+				transition: stroke 0.3s var(--ease);
+			}
+			#sj-form:focus-within .cp-search-ic {
+				stroke: var(--sage);
+			}
+			#sj-address {
+				box-sizing: border-box;
+				width: 100%;
+				padding: 17px 22px 17px 50px;
+				font: 500 16px var(--sans);
+				color: var(--text);
+				background: var(--glass);
+				border: 1px solid var(--line);
+				border-radius: 999px;
+				outline: none;
+				-webkit-backdrop-filter: blur(14px) saturate(140%);
+				backdrop-filter: blur(14px) saturate(140%);
+				box-shadow:
+					inset 0 1px 0 var(--glass-hi),
+					0 18px 40px -26px var(--shadow);
+				transition:
+					border-color 0.3s var(--ease),
+					box-shadow 0.3s var(--ease),
+					transform 0.3s var(--ease);
+			}
+			#sj-address::placeholder {
+				color: var(--text-faint);
+			}
+			#sj-address:focus {
+				border-color: var(--sage);
+				transform: translateY(-1px);
+				box-shadow:
+					inset 0 1px 0 var(--glass-hi),
+					0 0 0 4px var(--sage-soft),
+					0 22px 44px -24px var(--glow);
+			}
+
+			/* ---- sections ---- */
+			.cp-label {
+				margin: 30px 4px 12px;
+				text-align: left;
+				font-size: 11.5px;
+				font-weight: 600;
+				letter-spacing: 0.14em;
+				text-transform: uppercase;
+				color: var(--text-faint);
+			}
+			.cp-grid {
+				display: grid;
+				grid-template-columns: repeat(3, 1fr);
+				gap: 12px;
+			}
+			@media (min-width: 560px) {
+				.cp-grid {
+					grid-template-columns: repeat(6, 1fr);
+				}
+			}
+
+			.cp-tile {
+				position: relative;
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				gap: 9px;
+				padding: 14px 6px 12px;
+				font: inherit;
+				color: var(--text);
+				background: var(--glass);
+				border: 1px solid var(--line);
+				border-radius: 20px;
+				cursor: pointer;
+				-webkit-backdrop-filter: blur(14px) saturate(140%);
+				backdrop-filter: blur(14px) saturate(140%);
+				box-shadow: inset 0 1px 0 var(--glass-hi);
+				transition:
+					transform 0.35s var(--ease),
+					border-color 0.25s var(--ease),
+					background 0.25s var(--ease),
+					box-shadow 0.35s var(--ease);
+			}
+			.cp-tile:hover {
+				transform: translateY(-4px);
+				background: var(--glass-2);
+				border-color: var(--sage);
+				box-shadow:
+					inset 0 1px 0 var(--glass-hi),
+					0 18px 30px -18px var(--shadow);
+			}
+			.cp-tile:active {
+				transform: translateY(-1px) scale(0.97);
+			}
+			.cp-tile:focus-visible {
+				outline: 2px solid var(--sage);
+				outline-offset: 3px;
+			}
+			.cp-ico {
+				width: 46px;
+				height: 46px;
+				border-radius: 14px;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				box-shadow: 0 10px 20px -10px var(--shadow);
+				transition: transform 0.35s var(--ease);
+			}
+			.cp-tile:hover .cp-ico {
+				transform: scale(1.08) rotate(-3deg);
+			}
+			.cp-ico svg {
+				width: 24px;
+				height: 24px;
+				fill: none;
+				stroke: currentColor;
+				stroke-width: 1.8;
+				stroke-linecap: round;
+				stroke-linejoin: round;
+			}
+			.cp-name {
+				font-size: 12.5px;
+				font-weight: 500;
+			}
+			.cp-tile.busy {
+				pointer-events: none;
+				border-color: var(--sage);
+			}
+			.cp-tile.busy .cp-ico {
+				animation: cpPulse 1s ease-in-out infinite;
+			}
+			@keyframes cpPulse {
+				50% {
+					transform: scale(0.9);
+					opacity: 0.7;
+				}
+			}
+
+			/* wide featured tile (games) */
+			.cp-feature {
+				display: flex;
+				align-items: center;
+				gap: 16px;
+				width: 100%;
+				box-sizing: border-box;
+				padding: 14px 18px;
+				text-align: left;
+				font: inherit;
+				color: var(--text);
+				background: var(--glass);
+				border: 1px solid var(--line);
+				border-radius: 22px;
+				cursor: pointer;
+				-webkit-backdrop-filter: blur(14px) saturate(140%);
+				backdrop-filter: blur(14px) saturate(140%);
+				box-shadow: inset 0 1px 0 var(--glass-hi);
+				transition:
+					transform 0.35s var(--ease),
+					border-color 0.25s var(--ease),
+					background 0.25s var(--ease),
+					box-shadow 0.35s var(--ease);
+			}
+			.cp-feature:hover {
+				transform: translateY(-3px);
+				background: var(--glass-2);
+				border-color: var(--sage);
+				box-shadow:
+					inset 0 1px 0 var(--glass-hi),
+					0 18px 30px -18px var(--shadow);
+			}
+			.cp-feature:active {
+				transform: scale(0.985);
+			}
+			.cp-feature:focus-visible {
+				outline: 2px solid var(--sage);
+				outline-offset: 3px;
+			}
+			.cp-feature .cp-ico {
+				flex: none;
+				width: 52px;
+				height: 52px;
+			}
+			.cp-feature .cp-ico svg {
+				width: 28px;
+				height: 28px;
+			}
+			.cp-feature-tx {
+				flex: 1;
+				min-width: 0;
+			}
+			.cp-feature-tx b {
+				display: block;
+				font-family: var(--display);
+				font-size: 18px;
+				font-weight: 600;
+				letter-spacing: -0.01em;
+			}
+			.cp-feature-tx span {
+				display: block;
+				margin-top: 2px;
+				font-size: 13px;
+				color: var(--text-dim);
+			}
+			.cp-go-arrow {
+				flex: none;
+				width: 20px;
+				height: 20px;
+				stroke: var(--text-faint);
+				fill: none;
+				stroke-width: 2;
+				stroke-linecap: round;
+				stroke-linejoin: round;
+				transition:
+					transform 0.35s var(--ease),
+					stroke 0.25s var(--ease);
+			}
+			.cp-feature:hover .cp-go-arrow {
+				transform: translateX(4px);
+				stroke: var(--sage);
+			}
+			.cp-feature.busy {
+				pointer-events: none;
+				border-color: var(--sage);
+			}
+
+			/* brand colours for the icons */
+			.i-insta {
+				background: linear-gradient(45deg, #f9ce34, #ee2a7b 55%, #6228d7);
+				color: #fff;
+			}
+			.i-snap {
+				background: #fffc00;
+				color: #111;
+			}
+			.i-tiktok {
+				background: #111;
+				color: #fff;
+			}
+			.i-yt {
+				background: #ff0033;
+				color: #fff;
+			}
+			.i-x {
+				background: #111;
+				color: #fff;
+			}
+			.i-reddit {
+				background: #ff4500;
+				color: #fff;
+			}
+			.i-crazy {
+				background: linear-gradient(135deg, #7b3ff2, #c46bff);
+				color: #fff;
+			}
+
+			/* ---- status + errors ---- */
+			#cp-status {
+				min-height: 18px;
+				margin: 22px 0 0;
+				font-size: 13px;
+				color: var(--sage-deep);
+			}
+			#sj-error {
+				margin: 6px 0 0;
+				font-size: 14px;
+				color: #e08b84;
+			}
+			#sj-error-code {
+				margin: 8px auto 0;
+				max-width: 100%;
+				text-align: left;
+				white-space: pre-wrap;
+				word-break: break-word;
+				font: 12px ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+				color: var(--text-dim);
+			}
+			#sj-error-code:empty {
+				display: none;
+			}
+
+			/* ---- footer ---- */
+			.cp-footer {
+				position: fixed;
+				left: 0;
+				right: 0;
+				bottom: 0;
+				padding: 14px 20px calc(14px + env(safe-area-inset-bottom, 0px));
+				text-align: center;
+				font-size: 11px;
+				color: var(--text-faint);
+			}
+			.cp-footer a {
+				color: var(--text-faint);
+				text-decoration: none;
+				margin: 0 4px;
+			}
+			.cp-footer a:hover {
+				color: var(--text-dim);
+			}
+
+			/* ---- entrance (quick, staggered) ---- */
+			.cp-in {
+				animation: cpIn 0.6s var(--ease) both;
+				animation-delay: calc(var(--i, 0) * 55ms);
+			}
+			@keyframes cpIn {
+				from {
+					opacity: 0;
+					transform: translateY(12px);
+				}
+				to {
+					opacity: 1;
+					transform: none;
+				}
+			}
+			@media (prefers-reduced-motion: reduce) {
+				.cp-in,
+				.cp-tile.busy .cp-ico {
+					animation: none !important;
+				}
+				.cp-tile,
+				.cp-feature,
+				.cp-ico {
+					transition: none !important;
+				}
+			}
+
+			/* Opened by Cipher with ?go=: show nothing until the site itself appears.
+			   (If an error is reported, the script below removes this class so you can see it.) */
+			html.cp-go .cp-wrap,
+			html.cp-go .cp-footer {
+				visibility: hidden;
+			}
+
+			#sj-frame {
+				position: fixed;
+				inset: 0;
+				width: 100%;
+				height: 100%;
+				border: 0;
+				background: #fff;
+				z-index: 10;
+			}
+
+            /* Branding belongs to the shell, above every proxied document. */
+            #cp-watermark {
+                position: fixed;
+                right: calc(14px + env(safe-area-inset-right, 0px));
+                bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+                z-index: 2147483647;
+                display: flex; align-items: center; gap: 7px;
+                padding: 7px 11px 7px 7px; border-radius: 12px;
+                background: rgba(42, 38, 32, .82); color: #ede5d4;
+                border: 1px solid rgba(237, 229, 212, .22);
+                font: 600 12px var(--sans);
+                pointer-events: none; user-select: none;
+            }
+            #cp-watermark svg { width: 25px; height: 25px; flex: none; }
+            #sj-frame[hidden] { display: none !important; }
+		</style>
+	</head>
+
+	<body>
+        <div id="cp-watermark" aria-label="Cipher">
+            <svg viewBox="0 0 32 32" fill="none" aria-hidden="true">
+                <rect width="32" height="32" rx="9" fill="#97a67d"/>
+                <path d="M22 10.1a8 8 0 1 0 0 11.8" stroke="#fff" stroke-width="3.2" stroke-linecap="round"/>
+            </svg><span>Cipher</span>
+        </div>
+
+		<div class="cp-wrap">
+			<div class="cp-brand cp-in" style="--i: 0" title="Cipher">
+				<div class="cp-mark">
+					<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+						<path
+							d="M16.5 7.6a6 6 0 1 0 0 8.8"
+							stroke="#fff"
+							stroke-width="2.4"
+							stroke-linecap="round"
+						/>
+					</svg>
+				</div>
+				<h1>Cipher Browser</h1>
+			</div>
+
+			<form id="sj-form" class="cp-in" style="--i: 1">
+				<svg class="cp-search-ic" viewBox="0 0 24 24" aria-hidden="true">
+					<circle cx="11" cy="11" r="7" />
+					<path d="M20 20l-3.5-3.5" />
+				</svg>
+				<input
+					id="sj-search-engine"
+					value="https://www.google.com/search?q=%s"
+					type="hidden"
+				/>
+				<input
+					id="sj-address"
+					type="text"
+					placeholder="Search the web or enter an address"
+					autocomplete="off"
+					autocapitalize="off"
+					spellcheck="false"
+				/>
+			</form>
+
+			<div class="cp-label cp-in" style="--i: 2">Social</div>
+			<div class="cp-grid">
+				<button type="button" class="cp-tile cp-in" style="--i: 3" data-url="https://www.instagram.com/" data-name="Instagram">
+					<span class="cp-ico i-insta">
+						<svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="5" /><circle cx="12" cy="12" r="4" /><circle cx="17.2" cy="6.8" r=".6" fill="currentColor" /></svg>
+					</span>
+					<span class="cp-name">Instagram</span>
+				</button>
+				<button type="button" class="cp-tile cp-in" style="--i: 4" data-url="https://www.snapchat.com/" data-name="Snapchat">
+					<span class="cp-ico i-snap">
+						<svg viewBox="0 0 24 24"><path d="M12 3.5c-2.8 0-4.5 2-4.5 4.6v2.3c-.5.4-1.2.7-2 .8.6.8 1.3 1.1 2 1.2-.3.9-1 1.5-2 1.8 1.4.3 2.3.7 3 1.6.5.6 1.2.9 3.5.9s3-.3 3.5-.9c.7-.9 1.6-1.3 3-1.6-1-.3-1.7-.9-2-1.8.7-.1 1.4-.4 2-1.2-.8-.1-1.5-.4-2-.8V8.1c0-2.6-1.7-4.6-4.5-4.6z" /></svg>
+					</span>
+					<span class="cp-name">Snapchat</span>
+				</button>
+				<button type="button" class="cp-tile cp-in" style="--i: 5" data-url="https://www.tiktok.com/" data-name="TikTok">
+					<span class="cp-ico i-tiktok">
+						<svg viewBox="0 0 24 24"><path d="M14 4v9.5a3.5 3.5 0 1 1-3.5-3.5" /><path d="M14 4c.4 2.2 1.9 3.6 4 3.8" /></svg>
+					</span>
+					<span class="cp-name">TikTok</span>
+				</button>
+				<button type="button" class="cp-tile cp-in" style="--i: 6" data-url="https://www.youtube.com/" data-name="YouTube">
+					<span class="cp-ico i-yt">
+						<svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="4" /><path d="M10.5 9.5v5l4.2-2.5z" fill="currentColor" /></svg>
+					</span>
+					<span class="cp-name">YouTube</span>
+				</button>
+				<button type="button" class="cp-tile cp-in" style="--i: 7" data-url="https://x.com/" data-name="X">
+					<span class="cp-ico i-x">
+						<svg viewBox="0 0 24 24"><path d="M5.5 5.5l13 13M18.5 5.5l-13 13" /></svg>
+					</span>
+					<span class="cp-name">X</span>
+				</button>
+				<button type="button" class="cp-tile cp-in" style="--i: 8" data-url="https://www.reddit.com/" data-name="Reddit">
+					<span class="cp-ico i-reddit">
+						<svg viewBox="0 0 24 24"><circle cx="12" cy="13.5" r="6" /><circle cx="9.6" cy="13" r=".8" fill="currentColor" /><circle cx="14.4" cy="13" r=".8" fill="currentColor" /><path d="M9.6 16c1.4 1 3.4 1 4.8 0" /><path d="M12 7.5l1-3 3 .8" /></svg>
+					</span>
+					<span class="cp-name">Reddit</span>
+				</button>
+			</div>
+
+			<div class="cp-label cp-in" style="--i: 9">Games</div>
+			<button type="button" class="cp-feature cp-in" style="--i: 10" data-url="https://www.crazygames.com/" data-name="CrazyGames">
+				<span class="cp-ico i-crazy">
+					<svg viewBox="0 0 24 24"><rect x="2.5" y="7" width="19" height="10" rx="5" /><path d="M8 10v4M6 12h4" /><circle cx="15.5" cy="11" r=".8" fill="currentColor" /><circle cx="17.7" cy="13" r=".8" fill="currentColor" /></svg>
+				</span>
+				<span class="cp-feature-tx">
+					<b>CrazyGames</b>
+					<span>Thousands of free games, play instantly</span>
+				</span>
+				<svg class="cp-go-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
+			</button>
+
+			<p id="cp-status" aria-live="polite"></p>
+			<p id="sj-error"></p>
+			<pre id="sj-error-code"></pre>
+		</div>
+
+		<footer class="cp-footer">
+			Cipher &middot; Powered by
+			<a href="https://github.com/MercuryWorkshop/scramjet">Scramjet</a>
+			&middot;
+			<a href="credits.html">Credits</a>
+		</footer>
+<script>
+/* Cipher navigation bridge for the Scramjet v1 API served by this repository. */
+(() => {
+  'use strict';
+  const form = document.getElementById('sj-form');
+  const address = document.getElementById('sj-address');
+  const searchEngine = document.getElementById('sj-search-engine');
+  const error = document.getElementById('sj-error');
+  const errorCode = document.getElementById('sj-error-code');
+  const allowedParent = 'https://cipher-message.edgeone.dev';
+  const parentOrigin = window.parent !== window ? allowedParent : null;
+  let scramjet, connection, ready, frame = null;
+  let entries = [''], index = 0, historyLength = 0;
+  let pending = null, loading = false, timeout = null, request = 0;
+  let changingHistory = false, home = true;
+  const hookedDocuments = new WeakSet();
+
+  function publish() {
+    if (parentOrigin) window.parent.postMessage({
+      cipherBridge: 1, url: home ? '' : entries[index],
+      canGoBack: index > 0, canGoForward: index < entries.length - 1,
+      loading
+    }, parentOrigin);
+  }
+  function clearBusy() {
+    document.getElementById('cp-status').textContent = '';
+    document.querySelectorAll('.busy').forEach(b => b.classList.remove('busy'));
+  }
+  function finish() {
+    clearTimeout(timeout); timeout = null; loading = false; pending = null;
+    clearBusy(); publish();
+  }
+  function start() {
+    clearTimeout(timeout); loading = true; publish();
+    timeout = setTimeout(finish, 30000);
+  }
+  function fail(err) {
+    error.textContent = 'Unable to open this page.';
+    errorCode.textContent = String(err && err.message || err);
+    document.documentElement.classList.remove('cp-go');
+    if (frame) frame.frame.hidden = true;
+    home = true; index = 0;
+    finish();
+  }
+  function currentUrl() {
+    try { return frame.url.href; } catch (_) { return entries[index] || ''; }
+  }
+  function length() {
+    try { return frame.frame.contentWindow.history.length; } catch (_) { return historyLength; }
+  }
+  function showHome() {
+    home = true; index = 0;
+    if (frame) frame.frame.hidden = true;
+    document.documentElement.classList.remove('cp-go');
+    finish();
+  }
+  function showPage() {
+    home = false; frame.frame.hidden = false;
+    document.documentElement.classList.add('cp-go');
+  }
+  function remember(url, kind) {
+    if (!url || url === 'about:blank') return;
+    const stayHome = home && index === 0 && entries.length > 1 && !pending;
+    if (stayHome) index = 1;
+    const count = length();
+    if (pending && pending.target !== undefined) {
+      index = pending.target;
+      entries[index] = url;
+      pending = null;
+    } else if (kind === 'traverse') {
+      // Browser gestures and a site's own history.back()/forward().
+      const candidates = entries.map((u, i) => u === url && i > 0 ? i : -1).filter(i => i >= 0);
+      candidates.sort((a, b) => Math.abs(a - index) - Math.abs(b - index));
+      if (candidates.length) index = candidates[0];
+      else entries[index] = url;
+    } else if (kind === 'push' || (pending && pending.push) || index === 0 ||
+        (kind === 'document' && (count > historyLength || index < entries.length - 1))) {
+      entries.splice(index + 1);
+      entries.push(url); index = entries.length - 1;
+    } else {
+      entries[index] = url;
+    }
+    pending = null;
+    historyLength = count;
+    if (stayHome) { index = 0; publish(); }
+    else { showPage(); publish(); }
+  }
+  function attachContext(event) {
+    if (event.client.isSubframe) return;
+    const w = event.window;
+    let doc;
+    try { doc = w.document; } catch (_) { return; }
+    if (hookedDocuments.has(doc)) return;
+    hookedDocuments.add(doc);
+    let kind = 'document';
+    try {
+      const nav = w.performance.getEntriesByType('navigation')[0];
+      if (nav && nav.type === 'back_forward') kind = 'traverse';
+      else if (nav && nav.type === 'reload') kind = 'replace';
+    } catch (_) {}
+    remember(event.client.url.href, kind);
+    // Preserve the site's original history.state, including primitive values.
+    for (const method of ['pushState', 'replaceState']) {
+      const original = w.history[method];
+      w.history[method] = function (...args) {
+        changingHistory = true;
+        try {
+          const result = Reflect.apply(original, this, args);
+          remember(currentUrl(), method === 'pushState' ? 'push' : 'replace');
+          finish();
+          return result;
+        } finally { changingHistory = false; }
+      };
+    }
+    w.addEventListener('popstate', () => { remember(currentUrl(), 'traverse'); finish(); });
+    w.addEventListener('hashchange', () => {
+      const url = currentUrl();
+      if (url !== entries[index]) remember(url, length() > historyLength ? 'push' : 'traverse');
+      finish();
+    });
+    w.addEventListener('pageshow', e => {
+      if (e.persisted) { remember(currentUrl(), 'traverse'); finish(); }
+    });
+    w.addEventListener('pagehide', () => { if (!home) start(); });
+  }
+  function createFrame() {
+    if (frame) return frame;
+    frame = scramjet.createFrame();
+    frame.frame.id = 'sj-frame';
+    frame.frame.title = 'Cipher Browser page';
+    frame.addEventListener('contextInit', attachContext);
+    frame.addEventListener('navigate', start);
+    frame.addEventListener('urlchange', () => {
+      if (!changingHistory) publish();
+    });
+    frame.frame.addEventListener('load', () => {
+      if (home) return;
+      // Context events normally commit first; load also covers proxy error pages.
+      finish();
+    });
+    document.body.appendChild(frame.frame);
+    return frame;
+  }
+  async function submit(event) {
+    event.preventDefault();
+    const id = ++request;
+    const value = address.value;
+    error.textContent = ''; errorCode.textContent = '';
+    start();
+    try {
+      if (!ready) {
+        const { ScramjetController } = $scramjetLoadController();
+        scramjet = new ScramjetController({ files: {
+          wasm: '/scram/scramjet.wasm.wasm', all: '/scram/scramjet.all.js', sync: '/scram/scramjet.sync.js'
+        }});
+        connection = new BareMux.BareMuxConnection('/baremux/worker.js');
+        ready = (async () => {
+          await scramjet.init();
+          await registerSW();
+          const wispUrl = (location.protocol === 'https:' ? 'wss' : 'ws') + '://' + location.host + '/wisp/';
+          await connection.setTransport('/libcurl/index.mjs', [{ websocket: wispUrl }]);
+        })().catch(err => { ready = null; throw err; });
+      }
+      await ready;
+      if (id !== request) return;
+      const url = search(value, searchEngine.value);
+      createFrame();
+      pending = { push: true };
+      showPage();
+      frame.go(url);
+    } catch (err) { if (id === request) fail(err); }
+  }
+  function command(cmd) {
+    if (pending) { publish(); return; }
+    if (cmd === 'back' && index > 0) {
+      if (index === 1) { showHome(); return; }
+      pending = { target: index - 1 }; start();
+      try { frame.back(); } catch (err) { finish(); }
+    } else if (cmd === 'forward' && index < entries.length - 1) {
+      if (home) { index = 1; showPage(); finish(); return; }
+      pending = { target: index + 1 }; start();
+      try { frame.forward(); } catch (err) { finish(); }
+    } else if (cmd === 'reload') {
+      if (home || !frame) { finish(); return; }
+      pending = { target: index }; start();
+      try { frame.reload(); } catch (err) { finish(); }
+    } else publish();
+  }
+  form.addEventListener('submit', submit);
+  window.addEventListener('message', event => {
+    if (!parentOrigin || event.origin !== parentOrigin || event.source !== window.parent) return;
+    const d = event.data;
+    if (!d || typeof d !== 'object') return;
+    if (d.cipherPing) publish();
+    else if (['back', 'forward', 'reload'].includes(d.cipherNav)) command(d.cipherNav);
+  });
+  window.addEventListener('pagehide', () => { clearTimeout(timeout); timeout = null; });
+  window.addEventListener('pageshow', publish);
+  publish();
+})();
+
+</script>
+		<script>
+			window.addEventListener("load", function () {
+				var form = document.getElementById("sj-form");
+				var input = document.getElementById("sj-address");
+				var status = document.getElementById("cp-status");
+				var err = document.getElementById("sj-error");
+				var root = document.documentElement;
+
+				function submitUrl(url) {
+					if (!input || !form) return;
+					input.value = url;
+					if (form.requestSubmit) form.requestSubmit();
+					else
+						form.dispatchEvent(
+							new Event("submit", { cancelable: true, bubbles: true }),
+						);
+				}
+
+				// Show the page again if the proxy reports an error (so the message isn't hidden).
+				function clearBusy() {
+					root.classList.remove("cp-go");
+					status.textContent = "";
+					document.querySelectorAll(".busy").forEach(function (b) {
+						b.classList.remove("busy");
+					});
+				}
+				if (err)
+					new MutationObserver(function () {
+						if (err.textContent.trim()) clearBusy();
+					}).observe(err, {
+						childList: true,
+						characterData: true,
+						subtree: true,
+					});
+
+				// Social + game buttons
+				document.querySelectorAll("[data-url]").forEach(function (b) {
+					b.addEventListener("click", function () {
+						b.classList.add("busy");
+						status.textContent =
+							"Opening " + (b.dataset.name || "site") + "… the first load can take a moment.";
+						submitUrl(b.dataset.url);
+					});
+				});
+
+				/* Cipher: let Cipher's Web browser panel open a site directly, e.g. /?go=https://www.instagram.com/ */
+				var go = new URLSearchParams(location.search).get("go");
+				if (!go) return;
+				var u;
+				try {
+					u = new URL(go);
+				} catch (e) {
+					clearBusy();
+					return;
+				}
+				if (u.protocol !== "https:" && u.protocol !== "http:") {
+					clearBusy();
+					return;
+				}
+				submitUrl(u.href);
+			});
+		</script>
+	</body>
+</html>
