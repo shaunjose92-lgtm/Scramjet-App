@@ -1,5 +1,5 @@
 "use strict";
-const stockSW = '/sw.js';
+const stockSW = '/sw.js?v=2.0.67-alpha.2';
 async function registerSW() {
   if (!navigator.serviceWorker) throw new Error('This browser needs HTTPS and service-worker support.');
   const registration = await navigator.serviceWorker.register(stockSW, { updateViaCache: 'none' });
@@ -13,7 +13,7 @@ async function registerSW() {
       error ? reject(error) : resolve();
     }
     function check() {
-      if (navigator.serviceWorker.controller && registration.active?.state === 'activated') done();
+      if (worker?.state === 'activated' && navigator.serviceWorker.controller === worker) done();
       else if (worker?.state === 'redundant' && !registration.active) done(new Error('Browser setup failed. Please reload.'));
     }
     worker?.addEventListener('statechange', check);

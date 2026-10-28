@@ -1,74 +1,77 @@
-# Cipher browser repair
+# Cipher browser — Scramjet v2 upgrade
 
-This update fixes confirmed page-loading and login-session defects in the
-existing Cipher browser. It keeps the current branding, URL and Render free plan.
-The code is ready to deploy; it has not been published to the live service.
+This package migrates Cipher from Scramjet 1.1.0 to 2.0.67-alpha.2,
+controller 0.0.14, and libcurl transport 2.0.6. These exact versions are pinned
+in package.json and the pnpm lockfile. The v2 release is an upstream alpha.
 
-## Actual fixes
-- Preserve percent-encoded session tokens instead of silently changing them.
-- Restore saved cookies correctly when the service worker restarts.
-- Persist server-set cookies, including HttpOnly sessions, before redirects.
-- Synchronize actual response cookies to pages instead of array-index strings.
-- Apply Max-Age expiry and logout deletion, host-only cookies, and domain/path boundaries.
-- Stop requests hanging indefinitely when a closed page cannot acknowledge cookies.
-- Add the isolation headers required to display proxied pages in Chrome.
-- Make concurrent requests wait for engine initialization to finish.
-- Wait for worker activation and page control before the first navigation.
-- Reconfigure the Wisp transport each startup so stale settings are replaced.
-- Accept Wisp URLs containing query strings and handle failed upgrades.
-- Prefer IPv4 through system DNS and correct the DNS cache duration from 120 milliseconds to 30 seconds.
-- Verify the pinned engine archive and check required assets before declaring readiness.
+## Deploy
 
-The cookie and initialization patches apply only to the exact Scramjet 1.1.0
-bundle verified by SHA-256. The original dependency is untouched; the server
-builds a patched copy when it starts. A different engine bundle fails with a
-clear startup error instead of receiving incompatible edits. Review these
-patches before upgrading Scramjet.
+The connected GitHub integration rejects writes with HTTP 403. This package
+has been tested locally but is NOT deployed until it is uploaded and Render
+finishes deploying that commit.
 
-## Deploy using GitHub (no terminal needed)
-1. Extract `Cipher-Browser-Repair.zip`.
-2. Open https://github.com/shaunjose92-lgtm/Scramjet-App and select **main**.
-3. Choose **Add file → Upload files**.
-4. Drag the files and folders INSIDE the extracted folder into GitHub, including
-   `src`, `public`, `scripts`, `tests`, `package.json` and `pnpm-lock.yaml`.
-   Do not upload the ZIP itself or an extra enclosing folder.
-5. Commit the upload. Render's current configuration auto-deploys `main`.
-6. Wait until Render reports the new deploy is **Live**.
-7. Refresh Cipher. Its existing backend URL does not need to change.
+1. Extract Cipher-Browser-Repair.zip.
+2. Open https://github.com/shaunjose92-lgtm/Scramjet-App on branch main.
+3. Choose Add file → Upload files from the repository ROOT.
+4. Upload the extracted CONTENTS, including package.json, pnpm-lock.yaml,
+   public, src, scripts, and tests. Do not upload the ZIP or an enclosing folder.
+5. Commit. Render is configured to deploy main automatically.
+6. Wait for that new deploy to show Live, then open:
+   https://scramjet-app-bx7d.onrender.com/health/ready
+   It must say engine: 2.0.67-alpha.2 and status: ready.
+7. Close old Cipher browser tabs and reopen Cipher before testing Instagram.
 
-The connected GitHub integration rejected writes with HTTP 403, so these
-changes could not be committed remotely or automatically deployed from this session.
+Keep the current proxy URL and free Render plan. No change to the separate
+EdgeOne Cipher HTML or Supabase is needed. Old unused v1 patch files left by
+GitHub's upload interface are no longer imported and cannot alter v2.
 
-## Validation
-16 Node tests pass, covering the reproduced original cookie defects, token
-preservation, expiry/logout, domain/path isolation, engine initialization,
-closed-client handling, response headers, server readiness, Wisp upgrade,
-worker activation and the existing diagnostic checks. Source lint passes.
+## What changed
 
-A real Chromium browser at 390 × 844 passed all four local login scenarios
-through the actual Scramjet → BareMux → libcurl → Wisp → HTTP pipeline:
-1. Form POST login and redirect using a percent-encoded HttpOnly session.
-2. Fetch response cookie synchronization and document.cookie HttpOnly filtering.
-3. Session preservation after stopping and restarting the service worker.
-4. Logout deletion with no page JavaScript exceptions.
+- Replace the v1 engine, worker/controller API and BareMux integration with
+  the matching v2 engine/controller and direct libcurl transport.
+- Remove v1 bundle rewrites; use upstream v2 session handling.
+- Wait for the NEW service worker to activate and control the page, even if
+  an old worker is still active during an upgrade.
+- Preserve the isolation headers required for embedded pages in Chromium.
+- Preserve Cipher's homepage, watermark and parent-window navigation bridge.
+- Route GET links opened in new tabs through a new Cipher controller, retaining
+  the session. POST bodies are not redirected through this link handler.
+- Retain the existing Wisp upgrade handling and IPv4 DNS configuration.
 
-The dummy login fixture is included. Run `pnpm test` for the Node tests.
-For the optional full browser test, install Playwright and Chromium in your
-development environment, then run `node tests/browser-login.cjs`.
-`CIPHER_TEST_CHROMIUM` can select an existing Chromium executable.
-Use Node 22 or later. No real accounts or passwords are used by these tests.
+Scramjet's maintainer reported newer-engine Instagram support here:
+https://github.com/MercuryWorkshop/scramjet/issues/106#issuecomment-4527405309
+This is a reason to test the upgrade, not evidence of a successful Cipher login.
 
-## Limits
-These repairs do not bypass CAPTCHAs, change a destination site's decisions
-about Render's IP, remove Render Free's idle sleep, or relocate the server.
-Actual Whatnot/social-account login has not been verified. The reported Iran
-location and destination HTTP 500 failure have not been reproduced.
-The separate EdgeOne-hosted Cipher HTML is unchanged.
+## Verified locally
 
-## Existing troubleshooting page
-`/diagnostics.html` checks required files, the Wisp connection and basic access
-to three fixed destinations. A reachable result does not prove login works.
-Probes time out after eight seconds and share results for one minute. They
-never use user accounts or cookies. Public responses omit raw exceptions.
-Wisp error logs can contain connection-level failure details and hostnames.
-`pnpm diagnose` runs those probes from the machine where the command executes.
+12 Node tests and source lint pass. A frozen-lockfile install succeeds.
+Real Chromium at 390 × 844 passed the actual v2 → libcurl → Wisp pipeline:
+
+- Form login with server-validated username/password, reserved characters and
+  Unicode, plus a CSRF cookie/token; redirect and encoded HttpOnly session.
+- Fetch POST JSON body, CSRF header and destination Origin remain correct.
+- Response cookie synchronization and HttpOnly filtering.
+- New-tab navigation retains the session in a new Cipher shell.
+- Session survives stopping and restarting the service worker.
+- Logout removes the session, with no page JavaScript exceptions.
+- Cross-origin embedding, SPA history state, and Cipher back/forward messages.
+
+Run pnpm test and pnpm lint with Node 22+.
+The optional browser suite needs Playwright and Chromium, then:
+node tests/browser-login.cjs
+CIPHER_TEST_CHROMIUM can select an existing Chromium executable.
+Only dummy credentials are used; the fixture rejects incorrect credentials.
+
+## Limits and rollout notes
+
+Actual Instagram, Snapchat and TikTok account login has NOT been verified.
+This does not bypass CAPTCHAs or remove account/IP restrictions or Render's
+free-plan resource limits. The 50-user workload has not been load-tested.
+
+V2 uses a different browser cookie database. Users may need to sign in again
+inside the proxy after upgrading. Cipher messaging accounts are unaffected.
+The old v1 browser storage is not deleted.
+
+The previously live commit is 58ff75a7d8ba84ab7adbd31dad24f4894c0194e1.
+Keep it available for rollback if the upgraded browser causes regressions.
+Do not announce social-login success until an actual account test succeeds.

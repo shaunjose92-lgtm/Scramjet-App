@@ -1,7 +1,7 @@
 import { createServer } from "node:http";
 import { fileURLToPath } from "url";
 import { existsSync } from "node:fs";
-import { join } from "node:path";
+import { join, dirname } from "node:path";
 import { setDefaultResultOrder } from "node:dns";
 import { networkDiagnostics } from "./diagnostics.js";
 import { hostname } from "node:os";
@@ -9,12 +9,13 @@ import { server as wisp, logging } from "@mercuryworkshop/wisp-js/server";
 import Fastify from "fastify";
 import fastifyStatic from "@fastify/static";
 
-import { prepareScramjet } from "./scramjet-compat.js";
+import { createRequire } from "node:module";
+const require = createRequire(import.meta.url);
 import { scramjetPath as originalScramjetPath } from "@mercuryworkshop/scramjet/path";
-import { libcurlPath } from "@mercuryworkshop/libcurl-transport";
-import { baremuxPath } from "@mercuryworkshop/bare-mux/node";
+const libcurlPath = dirname(require.resolve("@mercuryworkshop/libcurl-transport"));
+const controllerPath = fileURLToPath(new URL(".", import.meta.resolve("@mercuryworkshop/scramjet-controller")));
 
-const scramjetPath = prepareScramjet(originalScramjetPath);
+const scramjetPath = originalScramjetPath;
 const publicPath = fileURLToPath(new URL("../public/", import.meta.url));
 
 // Wisp Configuration: Refer to the documentation at https://www.npmjs.com/package/@mercuryworkshop/wisp-js
@@ -69,21 +70,21 @@ fastify.register(fastifyStatic, {
 });
 
 fastify.register(fastifyStatic, {
-	root: baremuxPath,
-	prefix: "/baremux/",
+	root: controllerPath,
+	prefix: "/controller/",
 	decorateReply: false,
 });
 
 const checkNetwork = networkDiagnostics();
 const requiredAssets = [
-    [scramjetPath, 'scramjet.all.js'], [scramjetPath, 'scramjet.sync.js'],
-    [scramjetPath, 'scramjet.wasm.wasm'], [libcurlPath, 'index.mjs'],
-    [baremuxPath, 'worker.js'], [baremuxPath, 'index.js']
+    [scramjetPath, 'scramjet.js'], [scramjetPath, 'scramjet.wasm'],
+    [libcurlPath, 'index.mjs'], [controllerPath, 'controller.api.js'],
+    [controllerPath, 'controller.sw.js'], [controllerPath, 'controller.inject.js']
 ];
 fastify.get('/health/ready', async (_request, reply) => {
     const missing = requiredAssets.filter(([root, file]) => !existsSync(join(root, file))).map(([, file]) => file);
     reply.header('Cache-Control', 'no-store');
-    return reply.code(missing.length ? 503 : 200).send({ status: missing.length ? 'not-ready' : 'ready', missing });
+    return reply.code(missing.length ? 503 : 200).send({ status: missing.length ? 'not-ready' : 'ready', engine: '2.0.67-alpha.2', controller: '0.0.14', missing });
 });
 fastify.get('/health/network', async (_request, reply) => {
     reply.header('Cache-Control', 'no-store');
