@@ -1,25 +1,24 @@
 "use strict";
-const stockSW = "./sw.js";
-
-/**
- * List of hostnames that are allowed to run serviceworkers on http://
- */
-const swAllowedHostnames = ["localhost", "127.0.0.1"];
-
-/**
- * Global util
- * Used in 404.html and index.html
- */
+const stockSW = '/sw.js';
 async function registerSW() {
-	if (!navigator.serviceWorker) {
-		if (
-			location.protocol !== "https:" &&
-			!swAllowedHostnames.includes(location.hostname)
-		)
-			throw new Error("Service workers cannot be registered without https.");
-
-		throw new Error("Your browser doesn't support service workers.");
-	}
-
-	await navigator.serviceWorker.register(stockSW);
+  if (!navigator.serviceWorker) throw new Error('This browser needs HTTPS and service-worker support.');
+  const registration = await navigator.serviceWorker.register(stockSW, { updateViaCache: 'none' });
+  await new Promise((resolve, reject) => {
+    const timer = setTimeout(() => done(new Error('Browser setup timed out. Reload and try again.')), 15000);
+    const worker = registration.installing || registration.waiting || registration.active;
+    function done(error) {
+      clearTimeout(timer);
+      worker?.removeEventListener('statechange', check);
+      navigator.serviceWorker.removeEventListener('controllerchange', check);
+      error ? reject(error) : resolve();
+    }
+    function check() {
+      if (navigator.serviceWorker.controller && registration.active?.state === 'activated') done();
+      else if (worker?.state === 'redundant' && !registration.active) done(new Error('Browser setup failed. Please reload.'));
+    }
+    worker?.addEventListener('statechange', check);
+    navigator.serviceWorker.addEventListener('controllerchange', check);
+    check();
+  });
+  return registration;
 }

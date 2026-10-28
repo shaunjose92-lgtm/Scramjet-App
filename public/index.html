@@ -792,9 +792,7 @@
           await scramjet.init();
           await registerSW();
           const wispUrl = (location.protocol === 'https:' ? 'wss' : 'ws') + '://' + location.host + '/wisp/';
-          if (await connection.getTransport() !== '/libcurl/index.mjs') {
-            await connection.setTransport('/libcurl/index.mjs', [{ websocket: wispUrl }]);
-          }
+          await connection.setTransport('/libcurl/index.mjs', [{ websocket: wispUrl }]);
         })().catch(err => { ready = null; throw err; });
       }
       await ready;

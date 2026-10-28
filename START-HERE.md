@@ -1,27 +1,60 @@
-# FIX THE HOSTING ISSUE — START HERE
+# Cipher browser repair — install this update
 
-## What is fixed in this ZIP
-- Corrected Wisp DNS logic: normal system DNS is used by default and IPv4 is preferred; custom DNS IPs now activate the resolve mode instead of being silently ignored.
-- Added a single-page server diagnostic at `/diagnostics.html` and a cached `/health/network` backend test for Whatnot, Instagram and eBay.
-- Preserved browser error reporting, Australia-focused search and the Fly.io Sydney deployment configuration.
-- No extra Node package dependencies.
+This update keeps your existing Cipher browser, branding and Render free plan.
+Local validation is described below. Check Render for the live deployment status.
 
-## Updating your separate Render TEST server (easy)
-1. Extract the ZIP; open `Scramjet-Australia`.
-2. On GitHub open `shaunjose92-lgtm/Scramjet-App` and select branch `scramjet-fixes` (not `main`).
-3. Upload and replace the matching files/folders from inside `Scramjet-Australia`; commit.
-4. Open your new `scramjet-test` URL on Render and append `/diagnostics.html` to the URL.
-5. This tells whether the *Render host* can reach Whatnot. If Whatnot says HTTP 500 here, it responded with HTTP 500 to a basic server request. If it says 200 while Whatnot fails in Scramjet, the problem involves the proxy/browser compatibility, site scripts, or site-specific security rules.
+## Update GitHub (no terminal needed)
+1. Extract `Cipher-Browser-Repair.zip`.
+2. Open https://github.com/shaunjose92-lgtm/Scramjet-App and select **main**.
+3. Choose **Add file → Upload files**.
+4. Drag the FILES AND FOLDERS INSIDE the extracted folder into GitHub. Include
+   `src`, `public`, `scripts`, `tests`, `package.json` and `pnpm-lock.yaml`.
+   Do not upload only the README, the ZIP itself, or an extra enclosing folder.
+5. Commit the upload. Render's current configuration auto-deploys `main`.
+6. Wait until Render reports the new deploy is **Live**.
+7. Open https://scramjet-app-bx7d.onrender.com/diagnostics.html and run checks.
+8. Refresh Cipher. Its existing backend URL does not need to change.
 
-## What CAN'T be fixed by editing this ZIP
-Render has no Australian region. Even your Singapore test server uses a datacenter IP. A browser timezone, DNS setting, or HTTP header will not give it a trusted Australian residential IP or remove CAPTCHAs. Moving hosting requires deploying the code onto an actual Sydney host and changing Cipher to point to it. We have NOT done that deployment.
+## What this repairs
+- Wait for the service worker to activate and control the page before navigation.
+- Refresh the transport's Wisp settings each startup, instead of checking only
+  whether a transport module with the same name already exists.
+- Accept `/wisp/` URLs with query strings and catch upgrade failures.
+- Enable Wisp error logging and add request IDs for backend request failures.
+- Use system DNS with IPv4 preferred; the previous custom DNS addresses were
+  ignored by Wisp's default lookup mode.
+- Add `/health/ready`, `/health/network` and `/diagnostics.html`.
+- Pin the existing Scramjet release archive's SHA-512 integrity in the lockfile.
+- Specify Node 22 or later, matching the application's current dependencies.
 
-## If you really want an Australian hosting region
-Use `fly.toml` and the guide `README-AUSTRALIA.md` to create a new server in Fly.io's `syd` region. This may cost money. It will still have a *datacenter* IP, so Whatnot/Google may reject it. Do not replace your working Cipher backend until tested. No hosting provider can promise third-party CAPTCHA-free logins.
+## Understanding the diagnostic
+- **Browser files: ready**: required proxy assets are present.
+- **Connection tunnel: Connected**: the Wisp WebSocket handshake succeeded.
+- **reachable**: a basic server request returned 2xx/3xx, not a verified login.
+- **upstream-5xx**: the destination returned a 5xx response to that probe.
+- **restricted**: the destination returned 403/429; restrictions or rate limits
+  are possible explanations, not confirmed causes.
+- **network-error**: the probe could not complete (including timeout).
 
-## What the diagnostic means
-- `/health/ready` 200 = server and proxy assets present; it does **not** prove site loading works.
-- `/health/network`: `network-error` = outbound connection trouble; `upstream-5xx` = destination returned a server error; 403/429 = possible restriction/rate limit; 200/3xx = basic reachability only.
-- `[www/id:...]` seen on a Whatnot error page is a site error reference, not necessarily a Render error.
+Probes use fixed destinations only, have an eight-second timeout, and share
+results for one minute to limit load. They do not use user accounts or cookies.
+No public diagnostic response includes credentials or raw exception messages.
+Wisp error logs can include connection-level failure details and hostnames.
 
-**Don't enter passwords or capture cookies in debugging output.**
+## What stays unresolved
+Render Free still sleeps when idle. This patch cannot remove that policy,
+change your Oregon server into an Australian server, or guarantee that social
+media sites will accept its shared datacentre IP. The reported Iran location
+and actual Whatnot login/HTTP 500 failure have not been reproduced.
+The separate EdgeOne-hosted Cipher HTML is not modified by this update.
+
+## Validation completed
+Seven Node tests pass: readiness/assets and live Wisp upgrade, worker setup,
+network-result classification, cache/concurrency and exception sanitisation.
+A Chromium test at 390 × 844 verified the diagnostic display, actual Wisp
+handshake, service-worker control, no horizontal overflow, and no startup JS
+errors. HTTP 500 display was tested with a simulated network-probe response.
+Server source lint checks pass. Social-account login was not tested.
+
+`pnpm test` runs the included tests. `pnpm diagnose` probes the three fixed
+sites from the machine where the command runs. Use Node 22+.
