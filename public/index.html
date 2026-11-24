@@ -1,699 +1,149 @@
-<!doctype html>
-<html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<meta
-			name="viewport"
-			content="width=device-width, initial-scale=1.0, shrink-to-fit=no"
-		/>
-		<meta name="theme-color" content="#2a2620" />
-		<title>Cipher Browser</title>
-
-		<link
-			rel="icon"
-			href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22><rect width=%2224%22 height=%2224%22 rx=%227%22 fill=%22%237a8a62%22/></svg>"
-		/>
-
-		<link rel="preconnect" href="https://fonts.googleapis.com" />
-		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-		<link
-			rel="stylesheet"
-			href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Source+Serif+4:wght@500;600&display=swap"
-		/>
-
-		<script>
-			/* Cipher: when Cipher opens a site directly (?go=...), hide the page from the very first paint so no start-up screen flashes. */
-			if (new URLSearchParams(location.search).get("go"))
-				document.documentElement.classList.add("cp-go");
-		</script>
-
-		<script src="/scram/scramjet.js"></script>
-		<script src="/controller/controller.api.js"></script>
-
-		<link rel="stylesheet" href="index.css" />
-		<script src="register-sw.js" defer></script>
-		<script src="search.js" defer></script>
-<!-- Navigation is handled by the Cipher bridge below, replacing index.js. -->
-
-		<style>
-			:root {
-				--bg: #2a2620;
-				--bg-2: #1f1c17;
-				--line: #3a342c;
-				--text: #ede5d4;
-				--text-dim: #a39a8a;
-				--text-faint: #7a7264;
-				--sage: #97a67d;
-				--sage-deep: #b3c194;
-				--sage-soft: rgba(151, 166, 125, 0.16);
-				--glow: rgba(151, 166, 125, 0.3);
-				--glass: rgba(237, 229, 212, 0.05);
-				--glass-2: rgba(237, 229, 212, 0.09);
-				--glass-hi: rgba(255, 253, 247, 0.07);
-				--shadow: rgba(0, 0, 0, 0.5);
-				--sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-				--display: "Source Serif 4", "Iowan Old Style", "Palatino Linotype",
-					Georgia, serif;
-				--ease: cubic-bezier(0.22, 0.9, 0.32, 1);
-			}
-			@media (prefers-color-scheme: light) {
-				:root {
-					--bg: #f4f1e9;
-					--bg-2: #ede5d4;
-					--line: #e3dcc9;
-					--text: #2b2620;
-					--text-dim: #6a6358;
-					--text-faint: #9a948a;
-					--sage: #7a8a62;
-					--sage-deep: #566244;
-					--sage-soft: rgba(122, 138, 98, 0.16);
-					--glow: rgba(122, 138, 98, 0.32);
-					--glass: rgba(43, 38, 32, 0.04);
-					--glass-2: rgba(43, 38, 32, 0.07);
-					--glass-hi: rgba(255, 253, 247, 0.6);
-					--shadow: rgba(60, 50, 30, 0.28);
-				}
-			}
-
-			* {
-				-webkit-tap-highlight-color: transparent;
-			}
-			html,
-			body {
-				margin: 0;
-				min-height: 100%;
-			}
-			body {
-				min-height: 100vh;
-				display: flex;
-				flex-direction: column;
-				align-items: center;
-				justify-content: center;
-				padding: 36px 18px 72px;
-				box-sizing: border-box;
-				background:
-					radial-gradient(
-						ellipse 60% 50% at 14% 10%,
-						var(--sage-soft),
-						transparent 70%
-					),
-					radial-gradient(
-						ellipse 50% 45% at 90% 92%,
-						rgba(216, 163, 163, 0.12),
-						transparent 70%
-					),
-					linear-gradient(180deg, var(--bg), var(--bg-2));
-				background-attachment: fixed;
-				color: var(--text);
-				font-family: var(--sans);
-				-webkit-font-smoothing: antialiased;
-			}
-
-			.cp-wrap {
-				width: 100%;
-				max-width: 640px;
-				text-align: center;
-			}
-
-			/* ---- brand ---- */
-			.cp-brand {
-				display: inline-flex;
-				align-items: center;
-				gap: 12px;
-				margin-bottom: 22px;
-			}
-			.cp-mark {
-				width: 40px;
-				height: 40px;
-				border-radius: 12px;
-				background: var(--sage);
-				display: flex;
-				align-items: center;
-				justify-content: center;
-				box-shadow: 0 12px 28px -12px var(--glow);
-				transition: transform 0.4s var(--ease);
-			}
-			.cp-brand:hover .cp-mark {
-				transform: rotate(-6deg) scale(1.06);
-			}
-			.cp-mark svg {
-				width: 60%;
-				height: 60%;
-				display: block;
-			}
-			.cp-brand h1 {
-				margin: 0;
-				font-family: var(--display);
-				font-weight: 600;
-				font-size: 28px;
-				letter-spacing: -0.02em;
-			}
-
-			/* ---- search ---- */
-			#sj-form {
-				position: relative;
-				display: block;
-				margin: 0;
-			}
-			.cp-search-ic {
-				position: absolute;
-				left: 20px;
-				top: 50%;
-				width: 18px;
-				height: 18px;
-				transform: translateY(-50%);
-				stroke: var(--text-faint);
-				fill: none;
-				stroke-width: 2;
-				stroke-linecap: round;
-				pointer-events: none;
-				transition: stroke 0.3s var(--ease);
-			}
-			#sj-form:focus-within .cp-search-ic {
-				stroke: var(--sage);
-			}
-			#sj-address {
-				box-sizing: border-box;
-				width: 100%;
-				padding: 17px 22px 17px 50px;
-				font: 500 16px var(--sans);
-				color: var(--text);
-				background: var(--glass);
-				border: 1px solid var(--line);
-				border-radius: 999px;
-				outline: none;
-				-webkit-backdrop-filter: blur(14px) saturate(140%);
-				backdrop-filter: blur(14px) saturate(140%);
-				box-shadow:
-					inset 0 1px 0 var(--glass-hi),
-					0 18px 40px -26px var(--shadow);
-				transition:
-					border-color 0.3s var(--ease),
-					box-shadow 0.3s var(--ease),
-					transform 0.3s var(--ease);
-			}
-			#sj-address::placeholder {
-				color: var(--text-faint);
-			}
-			#sj-address:focus {
-				border-color: var(--sage);
-				transform: translateY(-1px);
-				box-shadow:
-					inset 0 1px 0 var(--glass-hi),
-					0 0 0 4px var(--sage-soft),
-					0 22px 44px -24px var(--glow);
-			}
-
-			/* ---- sections ---- */
-			.cp-label {
-				margin: 30px 4px 12px;
-				text-align: left;
-				font-size: 11.5px;
-				font-weight: 600;
-				letter-spacing: 0.14em;
-				text-transform: uppercase;
-				color: var(--text-faint);
-			}
-			.cp-grid {
-				display: grid;
-				grid-template-columns: repeat(3, 1fr);
-				gap: 12px;
-			}
-			@media (min-width: 560px) {
-				.cp-grid {
-					grid-template-columns: repeat(6, 1fr);
-				}
-			}
-
-			.cp-tile {
-				position: relative;
-				display: flex;
-				flex-direction: column;
-				align-items: center;
-				gap: 9px;
-				padding: 14px 6px 12px;
-				font: inherit;
-				color: var(--text);
-				background: var(--glass);
-				border: 1px solid var(--line);
-				border-radius: 20px;
-				cursor: pointer;
-				-webkit-backdrop-filter: blur(14px) saturate(140%);
-				backdrop-filter: blur(14px) saturate(140%);
-				box-shadow: inset 0 1px 0 var(--glass-hi);
-				transition:
-					transform 0.35s var(--ease),
-					border-color 0.25s var(--ease),
-					background 0.25s var(--ease),
-					box-shadow 0.35s var(--ease);
-			}
-			.cp-tile:hover {
-				transform: translateY(-4px);
-				background: var(--glass-2);
-				border-color: var(--sage);
-				box-shadow:
-					inset 0 1px 0 var(--glass-hi),
-					0 18px 30px -18px var(--shadow);
-			}
-			.cp-tile:active {
-				transform: translateY(-1px) scale(0.97);
-			}
-			.cp-tile:focus-visible {
-				outline: 2px solid var(--sage);
-				outline-offset: 3px;
-			}
-			.cp-ico {
-				width: 46px;
-				height: 46px;
-				border-radius: 14px;
-				display: flex;
-				align-items: center;
-				justify-content: center;
-				box-shadow: 0 10px 20px -10px var(--shadow);
-				transition: transform 0.35s var(--ease);
-			}
-			.cp-tile:hover .cp-ico {
-				transform: scale(1.08) rotate(-3deg);
-			}
-			.cp-ico svg {
-				width: 24px;
-				height: 24px;
-				fill: none;
-				stroke: currentColor;
-				stroke-width: 1.8;
-				stroke-linecap: round;
-				stroke-linejoin: round;
-			}
-			.cp-name {
-				font-size: 12.5px;
-				font-weight: 500;
-			}
-			.cp-tile.busy {
-				pointer-events: none;
-				border-color: var(--sage);
-			}
-			.cp-tile.busy .cp-ico {
-				animation: cpPulse 1s ease-in-out infinite;
-			}
-			@keyframes cpPulse {
-				50% {
-					transform: scale(0.9);
-					opacity: 0.7;
-				}
-			}
-
-			/* wide featured tile (games) */
-			.cp-feature {
-				display: flex;
-				align-items: center;
-				gap: 16px;
-				width: 100%;
-				box-sizing: border-box;
-				padding: 14px 18px;
-				text-align: left;
-				font: inherit;
-				color: var(--text);
-				background: var(--glass);
-				border: 1px solid var(--line);
-				border-radius: 22px;
-				cursor: pointer;
-				-webkit-backdrop-filter: blur(14px) saturate(140%);
-				backdrop-filter: blur(14px) saturate(140%);
-				box-shadow: inset 0 1px 0 var(--glass-hi);
-				transition:
-					transform 0.35s var(--ease),
-					border-color 0.25s var(--ease),
-					background 0.25s var(--ease),
-					box-shadow 0.35s var(--ease);
-			}
-			.cp-feature:hover {
-				transform: translateY(-3px);
-				background: var(--glass-2);
-				border-color: var(--sage);
-				box-shadow:
-					inset 0 1px 0 var(--glass-hi),
-					0 18px 30px -18px var(--shadow);
-			}
-			.cp-feature:active {
-				transform: scale(0.985);
-			}
-			.cp-feature:focus-visible {
-				outline: 2px solid var(--sage);
-				outline-offset: 3px;
-			}
-			.cp-feature .cp-ico {
-				flex: none;
-				width: 52px;
-				height: 52px;
-			}
-			.cp-feature .cp-ico svg {
-				width: 28px;
-				height: 28px;
-			}
-			.cp-feature-tx {
-				flex: 1;
-				min-width: 0;
-			}
-			.cp-feature-tx b {
-				display: block;
-				font-family: var(--display);
-				font-size: 18px;
-				font-weight: 600;
-				letter-spacing: -0.01em;
-			}
-			.cp-feature-tx span {
-				display: block;
-				margin-top: 2px;
-				font-size: 13px;
-				color: var(--text-dim);
-			}
-			.cp-go-arrow {
-				flex: none;
-				width: 20px;
-				height: 20px;
-				stroke: var(--text-faint);
-				fill: none;
-				stroke-width: 2;
-				stroke-linecap: round;
-				stroke-linejoin: round;
-				transition:
-					transform 0.35s var(--ease),
-					stroke 0.25s var(--ease);
-			}
-			.cp-feature:hover .cp-go-arrow {
-				transform: translateX(4px);
-				stroke: var(--sage);
-			}
-			.cp-feature.busy {
-				pointer-events: none;
-				border-color: var(--sage);
-			}
-
-			/* brand colours for the icons */
-			.i-insta {
-				background: linear-gradient(45deg, #f9ce34, #ee2a7b 55%, #6228d7);
-				color: #fff;
-			}
-			.i-snap {
-				background: #fffc00;
-				color: #111;
-			}
-			.i-tiktok {
-				background: #111;
-				color: #fff;
-			}
-			.i-yt {
-				background: #ff0033;
-				color: #fff;
-			}
-			.i-x {
-				background: #111;
-				color: #fff;
-			}
-			.i-reddit {
-				background: #ff4500;
-				color: #fff;
-			}
-			.i-crazy {
-				background: linear-gradient(135deg, #7b3ff2, #c46bff);
-				color: #fff;
-			}
-
-			/* ---- status + errors ---- */
-			#cp-status {
-				min-height: 18px;
-				margin: 22px 0 0;
-				font-size: 13px;
-				color: var(--sage-deep);
-			}
-			#sj-error {
-				margin: 6px 0 0;
-				font-size: 14px;
-				color: #e08b84;
-			}
-			#sj-error-code {
-				margin: 8px auto 0;
-				max-width: 100%;
-				text-align: left;
-				white-space: pre-wrap;
-				word-break: break-word;
-				font: 12px ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-				color: var(--text-dim);
-			}
-			#sj-error-code:empty {
-				display: none;
-			}
-
-			/* ---- footer ---- */
-			.cp-footer {
-				position: fixed;
-				left: 0;
-				right: 0;
-				bottom: 0;
-				padding: 14px 20px calc(14px + env(safe-area-inset-bottom, 0px));
-				text-align: center;
-				font-size: 11px;
-				color: var(--text-faint);
-			}
-			.cp-footer a {
-				color: var(--text-faint);
-				text-decoration: none;
-				margin: 0 4px;
-			}
-			.cp-footer a:hover {
-				color: var(--text-dim);
-			}
-
-			/* ---- entrance (quick, staggered) ---- */
-			.cp-in {
-				animation: cpIn 0.6s var(--ease) both;
-				animation-delay: calc(var(--i, 0) * 55ms);
-			}
-			@keyframes cpIn {
-				from {
-					opacity: 0;
-					transform: translateY(12px);
-				}
-				to {
-					opacity: 1;
-					transform: none;
-				}
-			}
-			@media (prefers-reduced-motion: reduce) {
-				.cp-in,
-				.cp-tile.busy .cp-ico {
-					animation: none !important;
-				}
-				.cp-tile,
-				.cp-feature,
-				.cp-ico {
-					transition: none !important;
-				}
-			}
-
-			/* Opened by Cipher with ?go=: show nothing until the site itself appears.
-			   (If an error is reported, the script below removes this class so you can see it.) */
-			html.cp-go .cp-wrap,
-			html.cp-go .cp-footer {
-				visibility: hidden;
-			}
-
-			#sj-frame {
-				position: fixed;
-				inset: 0;
-				width: 100%;
-				height: 100%;
-				border: 0;
-				background: #fff;
-				z-index: 10;
-			}
-
-            /* Branding belongs to the shell, above every proxied document. */
-            #cp-watermark {
-                position: fixed;
-                right: calc(14px + env(safe-area-inset-right, 0px));
-                bottom: calc(14px + env(safe-area-inset-bottom, 0px));
-                z-index: 2147483647;
-                display: flex; align-items: center; gap: 7px;
-                padding: 7px 11px 7px 7px; border-radius: 12px;
-                background: rgba(42, 38, 32, .82); color: #ede5d4;
-                border: 1px solid rgba(237, 229, 212, .22);
-                font: 600 12px var(--sans);
-                pointer-events: none; user-select: none;
-            }
-            #cp-watermark svg { width: 25px; height: 25px; flex: none; }
-            #sj-frame[hidden] { display: none !important; }
-		</style>
-	</head>
-
-	<body>
-        <div id="cp-watermark" aria-label="Cipher">
-            <svg viewBox="0 0 32 32" fill="none" aria-hidden="true">
-                <rect width="32" height="32" rx="9" fill="#97a67d"/>
-                <path d="M22 10.1a8 8 0 1 0 0 11.8" stroke="#fff" stroke-width="3.2" stroke-linecap="round"/>
-            </svg><span>Cipher</span>
-        </div>
-
-		<div class="cp-wrap">
-			<div class="cp-brand cp-in" style="--i: 0" title="Cipher">
-				<div class="cp-mark">
-					<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-						<path
-							d="M16.5 7.6a6 6 0 1 0 0 8.8"
-							stroke="#fff"
-							stroke-width="2.4"
-							stroke-linecap="round"
-						/>
-					</svg>
-				</div>
-				<h1>Cipher Browser</h1>
-			</div>
-
-			<form id="sj-form" class="cp-in" style="--i: 1">
-				<svg class="cp-search-ic" viewBox="0 0 24 24" aria-hidden="true">
-					<circle cx="11" cy="11" r="7" />
-					<path d="M20 20l-3.5-3.5" />
-				</svg>
-				<input
-					id="sj-search-engine"
-					value="https://www.google.com/search?q=%s"
-					type="hidden"
-				/>
-				<input
-					id="sj-address"
-					type="text"
-					placeholder="Search the web or enter an address"
-					autocomplete="off"
-					autocapitalize="off"
-					spellcheck="false"
-				/>
-			</form>
-
-			<div class="cp-label cp-in" style="--i: 2">Social</div>
-			<div class="cp-grid">
-				<button type="button" class="cp-tile cp-in" style="--i: 3" data-url="https://www.instagram.com/" data-name="Instagram">
-					<span class="cp-ico i-insta">
-						<svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="5" /><circle cx="12" cy="12" r="4" /><circle cx="17.2" cy="6.8" r=".6" fill="currentColor" /></svg>
-					</span>
-					<span class="cp-name">Instagram</span>
-				</button>
-				<button type="button" class="cp-tile cp-in" style="--i: 4" data-url="https://www.snapchat.com/" data-name="Snapchat">
-					<span class="cp-ico i-snap">
-						<svg viewBox="0 0 24 24"><path d="M12 3.5c-2.8 0-4.5 2-4.5 4.6v2.3c-.5.4-1.2.7-2 .8.6.8 1.3 1.1 2 1.2-.3.9-1 1.5-2 1.8 1.4.3 2.3.7 3 1.6.5.6 1.2.9 3.5.9s3-.3 3.5-.9c.7-.9 1.6-1.3 3-1.6-1-.3-1.7-.9-2-1.8.7-.1 1.4-.4 2-1.2-.8-.1-1.5-.4-2-.8V8.1c0-2.6-1.7-4.6-4.5-4.6z" /></svg>
-					</span>
-					<span class="cp-name">Snapchat</span>
-				</button>
-				<button type="button" class="cp-tile cp-in" style="--i: 5" data-url="https://www.tiktok.com/" data-name="TikTok">
-					<span class="cp-ico i-tiktok">
-						<svg viewBox="0 0 24 24"><path d="M14 4v9.5a3.5 3.5 0 1 1-3.5-3.5" /><path d="M14 4c.4 2.2 1.9 3.6 4 3.8" /></svg>
-					</span>
-					<span class="cp-name">TikTok</span>
-				</button>
-				<button type="button" class="cp-tile cp-in" style="--i: 6" data-url="https://www.youtube.com/" data-name="YouTube">
-					<span class="cp-ico i-yt">
-						<svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="4" /><path d="M10.5 9.5v5l4.2-2.5z" fill="currentColor" /></svg>
-					</span>
-					<span class="cp-name">YouTube</span>
-				</button>
-				<button type="button" class="cp-tile cp-in" style="--i: 7" data-url="https://x.com/" data-name="X">
-					<span class="cp-ico i-x">
-						<svg viewBox="0 0 24 24"><path d="M5.5 5.5l13 13M18.5 5.5l-13 13" /></svg>
-					</span>
-					<span class="cp-name">X</span>
-				</button>
-				<button type="button" class="cp-tile cp-in" style="--i: 8" data-url="https://www.reddit.com/" data-name="Reddit">
-					<span class="cp-ico i-reddit">
-						<svg viewBox="0 0 24 24"><circle cx="12" cy="13.5" r="6" /><circle cx="9.6" cy="13" r=".8" fill="currentColor" /><circle cx="14.4" cy="13" r=".8" fill="currentColor" /><path d="M9.6 16c1.4 1 3.4 1 4.8 0" /><path d="M12 7.5l1-3 3 .8" /></svg>
-					</span>
-					<span class="cp-name">Reddit</span>
-				</button>
-			</div>
-
-			<div class="cp-label cp-in" style="--i: 9">Games</div>
-			<button type="button" class="cp-feature cp-in" style="--i: 10" data-url="https://www.crazygames.com/" data-name="CrazyGames">
-				<span class="cp-ico i-crazy">
-					<svg viewBox="0 0 24 24"><rect x="2.5" y="7" width="19" height="10" rx="5" /><path d="M8 10v4M6 12h4" /><circle cx="15.5" cy="11" r=".8" fill="currentColor" /><circle cx="17.7" cy="13" r=".8" fill="currentColor" /></svg>
-				</span>
-				<span class="cp-feature-tx">
-					<b>CrazyGames</b>
-					<span>Thousands of free games, play instantly</span>
-				</span>
-				<svg class="cp-go-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
-			</button>
-
-			<p id="cp-status" aria-live="polite"></p>
-			<p id="sj-error"></p>
-			<pre id="sj-error-code"></pre>
-		</div>
-
-		<footer class="cp-footer">
-			Cipher &middot; Powered by
-			<a href="https://github.com/MercuryWorkshop/scramjet">Scramjet</a>
-			&middot;
-			<a href="credits.html">Credits</a>
-		</footer>
-<script src="/cipher-browser.js" defer></script>
-		<script>
-			window.addEventListener("load", function () {
-				var form = document.getElementById("sj-form");
-				var input = document.getElementById("sj-address");
-				var status = document.getElementById("cp-status");
-				var err = document.getElementById("sj-error");
-				var root = document.documentElement;
-
-				function submitUrl(url) {
-					if (!input || !form) return;
-					input.value = url;
-					if (form.requestSubmit) form.requestSubmit();
-					else
-						form.dispatchEvent(
-							new Event("submit", { cancelable: true, bubbles: true }),
-						);
-				}
-
-				// Show the page again if the proxy reports an error (so the message isn't hidden).
-				function clearBusy() {
-					root.classList.remove("cp-go");
-					status.textContent = "";
-					document.querySelectorAll(".busy").forEach(function (b) {
-						b.classList.remove("busy");
-					});
-				}
-				if (err)
-					new MutationObserver(function () {
-						if (err.textContent.trim()) clearBusy();
-					}).observe(err, {
-						childList: true,
-						characterData: true,
-						subtree: true,
-					});
-
-				// Social + game buttons
-				document.querySelectorAll("[data-url]").forEach(function (b) {
-					b.addEventListener("click", function () {
-						b.classList.add("busy");
-						status.textContent =
-							"Opening " + (b.dataset.name || "site") + "… the first load can take a moment.";
-						submitUrl(b.dataset.url);
-					});
-				});
-
-				/* Cipher: let Cipher's Web browser panel open a site directly, e.g. /?go=https://www.instagram.com/ */
-				var go = new URLSearchParams(location.search).get("go");
-				if (!go) return;
-				var u;
-				try {
-					u = new URL(go);
-				} catch (e) {
-					clearBusy();
-					return;
-				}
-				if (u.protocol !== "https:" && u.protocol !== "http:") {
-					clearBusy();
-					return;
-				}
-				submitUrl(u.href);
-			});
-		</script>
-	</body>
-</html>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Cipher Browser</title><meta name="theme-color" content="#7a8a62">
+<link rel="icon" href="/favicon.svg"><link rel="apple-touch-icon" href="/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f4f1e9;--bg-2:#ede5d4;--paper:#fbf8f1;--panel-2:rgba(43,38,32,.065);--text:#2b2620;--text-dim:#6a6358;--line:#e3dcc9;--sage:#7a8a62;--sage-soft:rgba(122,138,98,.16);--bad:#c0504d;--display:'Source Serif 4','Iowan Old Style','Palatino Linotype',Georgia,serif;--sans:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
+@media(prefers-color-scheme:dark){:root{--bg:#2a2620;--bg-2:#1f1c17;--paper:#2f2a23;--panel-2:rgba(237,229,212,.065);--text:#ede5d4;--text-dim:#a39a8a;--line:#3a342c;--sage:#97a67d;--sage-soft:rgba(151,166,125,.16);--bad:#e0827f}}
+*{box-sizing:border-box}html,body{height:100%;margin:0}body{background:var(--bg);color:var(--text);font:15px var(--sans);display:flex;flex-direction:column;overflow:hidden}
+.brand{display:flex;align-items:center;gap:9px}.bi{width:29px;height:29px;display:grid;place-items:center;background:var(--sage);color:#fff;border-radius:9px;box-shadow:0 4px 14px -6px var(--sage)}.bi svg{width:19px;height:19px}.bt{font:600 18px/1 var(--display);letter-spacing:-.035em;white-space:nowrap}.bt em,h1 em,h2 em{font-style:italic;color:var(--sage);font-weight:600}
+.title{display:flex;align-items:center;gap:12px;min-height:51px;padding:8px 17px;background:linear-gradient(130deg,var(--paper),var(--bg-2));border-bottom:1px solid var(--line)}
+#login{margin:auto;width:min(450px,92%);text-align:center;background:var(--paper);border:1px solid var(--line);border-radius:22px;padding:34px 28px;box-shadow:0 24px 60px -30px rgba(0,0,0,.35)}
+.mark{width:70px;height:70px;border-radius:22px;background:var(--sage-soft);color:var(--sage);display:grid;place-items:center;margin:0 auto 22px}.mark svg{width:37px;height:37px}
+#login h2{font:700 38px/1.05 var(--display);letter-spacing:-.035em;margin:0 0 10px}#login p{color:var(--text-dim);line-height:1.55;margin:0}
+input,button{font:inherit;color:inherit}input{width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--bg);margin:16px 0 8px;outline:0}input:focus{border-color:var(--sage)}
+button{border:1px solid transparent;background:transparent;color:var(--text-dim);border-radius:10px;min-width:35px;height:33px;padding:0 10px;cursor:pointer}button:hover{background:var(--panel-2);color:var(--text);border-color:var(--line)}
+button.p{background:var(--sage);color:#fff;border-color:var(--sage);height:42px;border-radius:12px;font-weight:600;padding:0 22px}#login button.p{width:100%}button.p:hover{background:var(--sage);color:#fff;filter:brightness(1.06)}
+#app{display:none;flex:1;flex-direction:column;min-height:0}.bar{display:flex;gap:5px;padding:8px;border-bottom:1px solid var(--line);background:var(--paper);align-items:center}.bar input{margin:0;padding:0 14px;height:34px;flex:1;border-radius:999px}
+.tabs{display:flex;gap:4px;padding:6px 8px 0;overflow:auto;background:var(--bg-2)}.tab{display:flex;align-items:center;gap:8px;min-width:118px;max-width:210px;height:32px;padding:0 8px 0 12px;border-radius:12px 12px 0 0;background:var(--panel-2);color:var(--text-dim);cursor:pointer;white-space:nowrap}.tab span{overflow:hidden;text-overflow:ellipsis;flex:1}.tab b{font-weight:400;width:18px;height:18px;line-height:17px;text-align:center;border-radius:6px}.tab b:hover{background:var(--panel-2);color:var(--text)}.tab.on{background:var(--paper);color:var(--text)}.tab.add{min-width:36px;justify-content:center;padding:0}
+#frames{flex:1;position:relative;min-height:0}#frames>iframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:#fff;display:none}#frames>iframe.on{display:block}
+#start{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:24px;text-align:center;background:var(--bg);z-index:3}#start.on{display:flex}
+#start h1{font:700 clamp(40px,7vw,64px)/1.05 var(--display);letter-spacing:-.035em;margin:0}#start p{color:var(--text-dim);margin:0}#start input{max-width:560px;height:48px;border-radius:999px;padding:0 20px;margin:0}
+.tiles{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;max-width:620px}.tile{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:12px 18px;cursor:pointer;min-width:120px}.tile:hover{border-color:var(--sage);background:var(--sage-soft)}
+#side{position:absolute;right:10px;top:8px;width:340px;max-height:70%;overflow:auto;background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:8px 12px;display:none;z-index:5;box-shadow:0 18px 40px -20px rgba(0,0,0,.4)}
+#side h3{font:700 20px var(--display);margin:6px 0;display:flex;justify-content:space-between;align-items:center}#side h3 button{font-size:12px;height:26px}
+.row{display:flex;align-items:center;gap:6px;padding:7px 0;border-top:1px solid var(--line)}.row span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer}.row button{height:24px;min-width:24px;padding:0}
+#pbar{position:fixed;left:0;top:0;height:2px;background:var(--sage);width:0;transition:width .4s;z-index:70}
+#status{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:55;max-width:90%;padding:9px 16px;border-radius:999px;background:var(--paper);border:1px solid var(--line);font-size:13px;display:none}#status.err{border-color:var(--bad);color:var(--bad)}
+#err{color:var(--bad);min-height:20px;font-size:13px}
+/* full-screen Cipher loading / error screen */
+#ld{position:fixed;inset:0;z-index:60;display:none;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:24px;text-align:center;background:radial-gradient(circle at 50% 30%,var(--bg-2),var(--bg) 70%)}#ld.on{display:flex}
+.ring{width:88px;height:88px;border-radius:28px;background:var(--sage-soft);color:var(--sage);display:grid;place-items:center;position:relative}.ring svg{width:44px;height:44px}
+.ring:after{content:"";position:absolute;inset:-9px;border-radius:34px;border:2px solid transparent;border-top-color:var(--sage);animation:sp 1.1s linear infinite}#ld.err .ring:after{display:none}#ld.err .ring{background:rgba(192,80,77,.14);color:var(--bad)}
+@keyframes sp{to{transform:rotate(360deg)}}
+#ld h1{font:700 clamp(26px,5vw,42px)/1.15 var(--display);letter-spacing:-.035em;margin:0;display:flex;justify-content:center;gap:.3em;max-width:min(90vw,780px)}#ldH{flex:none;white-space:nowrap}#ldT{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#ldM{max-width:560px;min-height:1px;color:var(--text-dim);line-height:1.6;margin:0}
+#ldD{display:none;max-width:560px;width:100%;text-align:left;background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:12px 16px;font-size:13px;line-height:1.7}#ldD code{display:block;margin-top:6px;color:var(--text-dim);word-break:break-word;max-height:90px;overflow:auto;font:12px ui-monospace,monospace}
+.ldb{display:flex;gap:10px}.ldb button{height:38px}#ldB2{display:none}#ld.err #ldB2{display:inline-block}
+.ldf{position:absolute;bottom:22px;display:flex;align-items:center;gap:8px;color:var(--text-dim)}.ldf .bi{width:22px;height:22px;border-radius:7px}.ldf .bi svg{width:14px;height:14px}
+</style></head><body>
+<div id="pbar"></div>
+<div class="title" id="ltitle"><div class="brand"><span class="bi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/></svg></span><span class="bt">Cipher <em>Browser</em></span></div></div>
+<div id="login"><div class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/></svg></div><h2>Cipher <em>Browser</em></h2><p>Enter your Browser Login Code from your Cipher account.</p><input id="code" placeholder="CB-XXXXXXXXXXXXXXXXXXXXXXXX" autocomplete="off" spellcheck="false"><div id="err"></div><button class="p" id="go">Sign in</button></div>
+<div id="app">
+<div class="title"><div class="brand"><span class="bi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/></svg></span><span class="bt">Cipher <em>Browser</em></span></div></div>
+<div class="tabs" id="tabs"></div>
+<div class="bar"><button id="back" title="Back">‹</button><button id="fwd" title="Forward">›</button><button id="rel" title="Reload">⟳</button><input id="url" placeholder="Search or enter address" autocomplete="off" spellcheck="false"><button id="bm" title="Bookmark">☆</button><button id="hist">History</button><button id="bks">Bookmarks</button><button id="out">Sign out</button></div>
+<div id="frames"><div id="start" class="on"><div class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/></svg></div><h1>Cipher <em>Browser</em></h1><p>Search the web or enter an address.</p><input id="sq" placeholder="Search or enter address" autocomplete="off"><div class="tiles"><div class="tile" data-u="https://www.google.com">Google</div><div class="tile" data-u="https://www.youtube.com">YouTube</div><div class="tile" data-u="https://www.reddit.com">Reddit</div><div class="tile" data-u="https://www.crazygames.com">CrazyGames</div><div class="tile" data-u="https://www.wikipedia.org">Wikipedia</div></div></div><div id="side"></div></div>
+</div>
+<div id="ld"><div class="ring"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/></svg></div>
+<h1><span id="ldH">Loading</span><em id="ldT"></em></h1><p id="ldM"></p><div id="ldD"></div>
+<div class="ldb"><button id="ldB2" class="p">Try again</button><button id="ldB1">Cancel</button></div>
+<div class="ldf"><span class="bi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/></svg></span><span class="bt" style="font-size:15px">Cipher <em>Browser</em></span></div></div>
+<div id="status"></div>
+<script src="/bootstrap-init.js"></script>
+<script>
+const $=i=>document.getElementById(i),api=(p,o={})=>fetch("/api/"+p,{credentials:"same-origin",headers:{"Content-Type":"application/json"},...o}),J=b=>({method:"POST",body:JSON.stringify(b)});
+const ENG=["https://www.google.com/search?q=","https://www.bing.com/search?q=","https://duckduckgo.com/?q="];
+const M1="Huh... Lots of people from Cipher are on here. Don’t worry, our servers are working hard. Give us a sec...";
+const M2="Okay. No, we do see your request to enter but there’s just too many people on here that it’s making the server strain. We’re not blaming you but we understand that you could be impatient.";
+let ctl,tabs=[],cur=0,ready,bms=[],L={t:null,start:0,timers:[],retry:null};
+const st=(m,e)=>{const x=$("status");x.textContent=m||"";x.className=e?"err":"";x.style.display=m?"block":"none";if(m)setTimeout(()=>{if(x.textContent===m)x.style.display="none"},4000)};
+const short=(s,n=60)=>{s=String(s||"");return s.length>n?s.slice(0,n-1)+"…":s};
+const host=u=>{try{return new URL(u).hostname.replace(/^www\./,"")}catch{return u}};
+/* ---- full-screen loading / error screen ---- */
+function ld(mode,title,retry){clearT();$("ld").className="on"+(mode=="err"?" err":"");$("ldH").textContent=mode=="err"?"We couldn’t load":"Loading";$("ldT").textContent=short(title);$("ldM").textContent="";$("ldD").style.display="none";L.retry=retry||null}
+function clearT(){L.timers.forEach(clearTimeout);L.timers=[]}
+function hideLd(){clearT();L.t=null;$("ld").className=""}
+function showLoad(t){L.t=t;L.start=Date.now();ld("load",t.title||host(t.url));
+ L.timers=[setTimeout(()=>{$("ldM").textContent=M1},45000),setTimeout(()=>{$("ldM").textContent=M2;L.err?showErr(t,L.err):diag()},60000)]}
+async function diag(){if(!L.t)return;const d=$("ldD");d.style.display="block";d.textContent="Running a quick check…";
+ const ok=v=>v?"✓":"✗";let srv=false,ms=0;try{const a=Date.now();srv=(await api("me")).status<500;ms=Date.now()-a}catch{}
+ d.innerHTML="";const l=(x)=>{const e=document.createElement("div");e.textContent=x;d.append(e)};
+ l(ok(!!ctl)+" Browser engine");l(ok(!!(navigator.serviceWorker&&navigator.serviceWorker.controller))+" Service worker");l(ok(srv)+" Cipher server"+(srv?" ("+ms+" ms)":""));l("… Waiting on "+(L.t?host(L.t.url):"site"))}
+function showErr(t,msg,retry){clearT();const m=String(msg||"Unknown error").replace(/\s+/g," ");ld("err",t.title||host(t.url||""),retry||(()=>{hideLd();if(t.url)go(t,t.url)}));
+ $("ldM").textContent="Something got in the way. Here’s what the Cipher server told us.";const d=$("ldD");d.style.display="block";d.innerHTML="";const c=document.createElement("code");c.textContent=short(m,400);d.append(c)}
+function fail(t,msg){t.err=msg;
+ if(/SSL|certificate|error code 35|TLS/i.test(msg)&&t.q!=null&&t.ei<ENG.length-1){t.ei++;go(t,ENG[t.ei]+encodeURIComponent(t.q),1);return}
+ if(L.t===t){L.err=msg;const w=60000-(Date.now()-L.start);if(w<=0)showErr(t,msg);else{L.timers.forEach(clearTimeout);L.timers=[setTimeout(()=>{$("ldM").textContent=M1},Math.max(0,45000-(Date.now()-L.start))),setTimeout(()=>showErr(t,msg),w)]}}
+ else showErr(t,msg)}
+$("ldB1").onclick=hideLd;$("ldB2").onclick=()=>{const r=L.retry;hideLd();r&&r()};
+/* ---- engine ---- */
+async function boot(){if(ready)return ready;return ready=(async()=>{try{
+ if(!("serviceWorker" in navigator))throw new Error("This browser blocks service workers (private mode?).");
+ if(typeof initBootstrap==="undefined")throw new Error("Engine script failed to load (/bootstrap-init.js).");
+ try{for(const r of await navigator.serviceWorker.getRegistrations()){if(!r.active||!/\/sw\.js$/.test(r.active.scriptURL))await r.unregister()}}catch{}
+ ctl=await initBootstrap();
+ if(!navigator.serviceWorker.controller){await Promise.race([navigator.serviceWorker.ready,new Promise(r=>setTimeout(r,4000))]);
+  if(!navigator.serviceWorker.controller){let done=0;try{done=sessionStorage.getItem("cbsr")}catch{}
+   if(!done){try{sessionStorage.setItem("cbsr","1")}catch{}location.reload();await new Promise(()=>{})}
+   throw new Error("Service worker is not controlling this page. Clear this site’s data (lock icon → Site settings → Clear data) and reload.")}}
+ try{sessionStorage.removeItem("cbsr")}catch{}
+}catch(e){ready=null;showErr({title:"Cipher Browser"},"Engine error: "+(e&&e.message||e),()=>location.reload());throw e}})()}
+/* ---- tabs ---- */
+const bmOf=u=>bms.find(b=>b.url===u);
+function draw(){const t=tabs[cur];$("start").classList.toggle("on",!t||!t.url);$("tabs").innerHTML="";
+ tabs.forEach((x,i)=>{const d=document.createElement("div");d.className="tab"+(i==cur?" on":"");const s=document.createElement("span");s.textContent=x.title||"New tab";const c=document.createElement("b");c.textContent="×";c.title="Close tab";c.onclick=e=>{e.stopPropagation();closeTab(i)};d.append(s,c);d.onclick=()=>activate(i);$("tabs").append(d);x.f.classList.toggle("on",i==cur)});
+ const p=document.createElement("div");p.className="tab add";p.textContent="+";p.title="New tab";p.onclick=()=>openTab("");$("tabs").append(p);
+ if(document.activeElement!==$("url"))$("url").value=t?t.url:"";$("bm").textContent=t&&t.url&&bmOf(t.url)?"★":"☆"}
+const save=()=>api("tabs",{method:"PUT",body:JSON.stringify({tabs:tabs.filter(t=>t.url).map(t=>({url:t.url,title:t.title}))})}).catch(()=>{});
+function activate(i){cur=i;const t=tabs[i];if(t&&t.pend){const u=t.pend;t.pend=null;go(t,u,1)}draw()}
+function closeTab(i){tabs[i].f.remove();tabs.splice(i,1);if(L.t&&!tabs.includes(L.t))hideLd();if(!tabs.length){openTab("");return}cur=Math.min(cur,tabs.length-1);activate(cur);save()}
+async function openTab(u,title,lazy){try{await boot()}catch{return}
+ const fe=document.createElement("iframe");fe.setAttribute("allow","fullscreen; autoplay; clipboard-read; clipboard-write; gamepad; accelerometer; gyroscope; microphone; camera; midi; encrypted-media; picture-in-picture; web-share");
+ const t={f:fe,url:"",title:title||"",q:null,ei:0,armed:false,pend:null};
+ fe.addEventListener("load",()=>onLoad(t));$("frames").append(fe);
+ const pl=[];try{pl.push(new $scramjetUtils.UrlWatcherPlugin(x=>{const h=String(x);if(t.armed&&h&&h!==t.url){t.url=h;$("pbar").style.width="70%";draw();save()}}))}catch{}
+ t.fr=ctl.createFrame(fe,{plugins:pl});tabs.push(t);cur=tabs.length-1;
+ if(lazy){t.url=u;t.pend=u}else if(u)go(t,u);draw();return t}
+function onLoad(t){if(!t.armed)return;let bad=null;
+ try{const w=t.f.contentWindow;if(w.location.href==="about:blank")return;const d=t.f.contentDocument,x=((d.body&&d.body.innerText)||"").trim();
+  if(d.title)t.title=d.title;if(x.length<1500&&/Service Worker Error|Request failed with error code|Internal Service/i.test(x))bad=x}catch{}
+ $("pbar").style.width="100%";setTimeout(()=>$("pbar").style.width="0",400);
+ if(bad){fail(t,bad);return}
+ t.err=null;if(L.t===t)hideLd();draw();save()}
+function go(t,u,silent){t.url=u;t.title=host(u);t.armed=true;t.err=null;L.err=null;$("pbar").style.width="70%";if(!silent||L.t!==t)showLoad(t);else $("ldT").textContent=short(t.title);
+ t.fr.go(u);api("data/history",J({url:u,title:t.title}));draw();save()}
+function nav(v){const t=tabs[cur];const raw=v.trim();if(!raw)return;let u;
+ if(/^https?:\/\//i.test(raw)){u=raw;t.q=null}else if(/^[\w-]+(\.[\w-]+)+(:\d+)?(\/.*)?$/.test(raw)){u="https://"+raw;t.q=null}else{t.q=raw;t.ei=0;api("data/searches",J({query:raw}));u=ENG[0]+encodeURIComponent(raw)}
+ go(t,u)}
+const submit=v=>{if(!v.trim())return;if(!tabs.length)openTab("").then(()=>nav(v));else nav(v)};
+/* ---- controls ---- */
+document.querySelectorAll(".tile").forEach(x=>x.onclick=()=>submit(x.dataset.u));
+$("sq").onkeydown=e=>{if(e.key=="Enter"){submit(e.target.value);e.target.value=""}};
+$("url").onkeydown=e=>{if(e.key=="Enter")submit(e.target.value)};$("url").onfocus=e=>e.target.select();
+$("back").onclick=()=>{try{tabs[cur].f.contentWindow.history.back()}catch{}};
+$("fwd").onclick=()=>{try{tabs[cur].f.contentWindow.history.forward()}catch{}};
+$("rel").onclick=()=>{const t=tabs[cur];if(t&&t.url)go(t,t.url)};
+$("bm").onclick=async()=>{const t=tabs[cur];if(!t||!t.url)return;const b=bmOf(t.url);
+ if(b)await api("data/bookmarks?id="+b.id,{method:"DELETE"});else await api("data/bookmarks",J({url:t.url,title:t.title}));
+ await loadBms();draw();st(b?"Bookmark removed":"Bookmarked")};
+async function loadBms(){try{bms=await(await api("data/bookmarks")).json();if(!Array.isArray(bms))bms=[]}catch{bms=[]}}
+async function panel(k){const s=$("side");if(s.style.display=="block"&&s.dataset.k==k){s.style.display="none";return}
+ s.dataset.k=k;let r=[];try{r=await(await api("data/"+k)).json()}catch{}if(!Array.isArray(r))r=[];
+ s.innerHTML="";const h=document.createElement("h3");h.textContent=k=="history"?"History":"Bookmarks";
+ if(k=="history"&&r.length){const c=document.createElement("button");c.textContent="Clear all";c.onclick=async()=>{await api("data/history",{method:"DELETE"});s.style.display="none";panel(k)};h.append(c)}s.append(h);
+ r.forEach(x=>{const d=document.createElement("div");d.className="row";const a=document.createElement("span");a.textContent=x.title||x.url;a.title=x.url;a.onclick=()=>{s.style.display="none";submit(x.url)};
+  const z=document.createElement("button");z.textContent="×";z.title="Remove";z.onclick=async()=>{await api("data/"+k+"?id="+x.id,{method:"DELETE"});if(k=="bookmarks"){await loadBms();draw()}d.remove()};d.append(a,z);s.append(d)});
+ if(!r.length){const e=document.createElement("div");e.className="row";e.textContent="Nothing here yet.";s.append(e)}s.style.display="block"}
+$("hist").onclick=()=>panel("history");$("bks").onclick=()=>panel("bookmarks");
+$("out").onclick=async()=>{await api("logout",{method:"POST"});location.reload()};
+async function enter(){$("ltitle").style.display="none";$("login").style.display="none";$("app").style.display="flex";
+ try{await boot()}catch{return}await loadBms();
+ let r=[];try{r=await(await api("tabs")).json()}catch{}if(!Array.isArray(r))r=[];
+ if(!r.length){await openTab("");return}
+ for(const x of r)await openTab(x.url,x.title,true);activate(0)}
+$("go").onclick=async()=>{$("err").textContent="";const r=await api("login",J({code:$("code").value}));if(r.ok)enter();else $("err").textContent=r.status==429?"Too many attempts. Try again in a few minutes.":"Invalid or expired code."};
+$("code").onkeydown=e=>{if(e.key=="Enter")$("go").click()};
+api("me").then(r=>{if(r.ok)enter()}).catch(()=>{});
+</script></body></html>
